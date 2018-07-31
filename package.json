@@ -7,6 +7,10 @@
     "test": "test",
     "publish-to-npm": "npm publish"
   },
+  "repository": {
+	"type" : "git", 
+	"url" : "https://github.com/CloudFunctionChoreography/cfc-library"
+  },
   "keywords": [
     "serverless",
     "cloud",
