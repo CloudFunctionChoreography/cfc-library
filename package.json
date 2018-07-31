@@ -1,5 +1,5 @@
 {
-  "name": "cfc",
+  "name": "cfc-lib",
   "version": "1.0.0",
   "description": "This is a serverless function composition library for cloud function (FaaS) choreography instead of orchestration.",
   "main": "index.js",
