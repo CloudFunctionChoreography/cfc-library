@@ -1,0 +1,26 @@
+{
+  "name": "cfc",
+  "version": "1.0.0",
+  "description": "This is a serverless function composition library for cloud function (FaaS) choreography instead of orchestration.",
+  "main": "index.js",
+  "scripts": {
+    "test": "test",
+    "publish-to-npm": "npm publish"
+  },
+  "keywords": [
+    "serverless",
+    "cloud",
+    "faas",
+    "function-as-a-service",
+    "composition",
+    "choreography",
+    "workflows",
+    "federated"
+  ],
+  "author": "Simon Buchholz",
+  "license": "MIT",
+  "dependencies": {
+    "aws-sdk": "^2.275.1",
+    "uuid": "^3.3.2"
+  }
+}
