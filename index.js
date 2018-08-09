@@ -6,7 +6,10 @@ const stepExecutor = require('./step-executor');
 const Logger = require('./logger');
 let workflows;
 
-const executeWorkflowStep = (params, functionExecitionId, stateProperties, workflowsLocation, handler) => {
+const executeWorkflowStep = (params, options, handler) => {
+
+    let {functionExecitionId, stateProperties, workflowsLocation} = options;
+
     /** If workflows haven't been read from file already, we do it here (this is only done in case of cold starts).
      Afterwards, the actual handler will be called. **/
     return new Promise((resolve, reject) => {
