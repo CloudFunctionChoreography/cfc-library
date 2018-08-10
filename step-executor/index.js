@@ -4,7 +4,7 @@ const AWS = require('aws-sdk');
 let sqs;
 
 
-const triggerNext = (state, LOG) => {
+const triggerNext = (state, security, LOG) => {
     return new Promise((resolve, reject) => {
         if (state.workflow.workflow[state.currentStep].end && state.workflow.workflow[state.currentStep].end === "true") {
             LOG.log(`This step (${state.currentStep} was final step in workflow: ${state.workflowName}, execution uuid: ${state.executionUuid}`);
@@ -12,8 +12,8 @@ const triggerNext = (state, LOG) => {
             // needs to be done for every separate invocation since one invocation could have different
             // credentials as previous ones
             AWS.config.update({
-                accessKeyId: state.workflow.workflow[state.currentStep].finishQueue.accessKeyId,
-                secretAccessKey: state.workflow.workflow[state.currentStep].finishQueue.secretAccessKey,
+                accessKeyId: security.awsLambda.accessKeyId,
+                secretAccessKey: security.awsLambda.secretAccessKey,
                 region: state.workflow.workflow[state.currentStep].finishQueue.regionName
             });
             sqs = new AWS.SQS();
@@ -37,7 +37,7 @@ const triggerNext = (state, LOG) => {
                 });
             } else if (state.workflow.workflow[state.nextStep].provider === "openWhisk") {
                 LOG.log(`Trigger next openWhisk step: ${state.nextStep}`);
-                triggerOpenWhisk(state, LOG).then(triggerOwResult => {
+                triggerOpenWhisk(state, security, LOG).then(triggerOwResult => {
                     resolve(triggerOwResult)
                 }).catch(triggerOwError => {
                     reject(triggerOwError)
@@ -79,14 +79,12 @@ const publishEndStateToQueue = (state, LOG) => {
 
         sqs.sendMessage(params, (err, data) => {
             if (err) {
-                LOG.err(`Error: Final state was not published to SNS Topic with ARN: ${state.workflow.workflow[state.currentStep].finishQueue.targetArn}`);
+                LOG.err(`Error: Final state was not published to SNS Topic with ARN: ${state.workflow.workflow[state.currentStep].finishQueue.queueUrl}`);
                 LOG.err(err);
                 reject(err);
             } // an error occurred
             else {
-                LOG.log(data);
-                LOG.log(`Final state was published to SNS Topic with ARN: ${state.workflow.workflow[state.currentStep].finishQueue.targetArn}`);
-                resolve(data);
+                resolve(`Final state was published to SNS Topic with URL: ${state.workflow.workflow[state.currentStep].finishQueue.queueUrl}`);
             }           // successful response
         });
     })
@@ -137,7 +135,7 @@ const triggerLambda = (state, LOG) => {
 };
 
 
-const triggerOpenWhisk = (state, LOG) => {
+const triggerOpenWhisk = (state, security, LOG) => {
     return new Promise((resolve, reject) => {
         let postState = {};
         Object.assign(postState, state);
@@ -146,7 +144,7 @@ const triggerOpenWhisk = (state, LOG) => {
         delete postState.workflow;
 
         const postData = JSON.stringify({workflowState: postState});
-        const auth = 'Basic ' + Buffer.from(state.workflow.workflow[state.nextStep].functionEndpoint.owApiAuthKey + ':' + state.workflow.workflow[state.nextStep].functionEndpoint.owApiAuthPassword).toString('base64');
+        const auth = 'Basic ' + Buffer.from(security.openWhisk.owApiAuthKey + ':' + security.openWhisk.owApiAuthPassword).toString('base64');
         const options = {
             hostname: state.workflow.workflow[state.nextStep].functionEndpoint.hostname,
             path: state.workflow.workflow[state.nextStep].functionEndpoint.path + "?blocking=false",
@@ -161,9 +159,13 @@ const triggerOpenWhisk = (state, LOG) => {
         let req = https.request(options, (res) => {
             const uuid = state.executionUuid;
             res.setEncoding('utf8');
-            res.resume();
+            // res.resume();
+            let data = ": ";
+            res.on('data', (chunk) => {
+                data += chunk
+            });
             res.on('end', () => {
-                resolve(`Next step (${state.nextStep}) was triggered for workflow: ${state.workflowName}, execution uuid: ${uuid}`);
+                resolve(`Next step (${state.nextStep}) was triggered for workflow: ${state.workflowName}, execution uuid: ${uuid} ${data}`);
             });
         });
 

@@ -8,7 +8,7 @@ let workflows;
 
 const executeWorkflowStep = (params, options, handler) => {
 
-    let {functionExecitionId, stateProperties, workflowsLocation} = options;
+    let {functionExecitionId, stateProperties, workflowsLocation, security, optimization} = options;
 
     /** If workflows haven't been read from file already, we do it here (this is only done in case of cold starts).
      Afterwards, the actual handler will be called. **/
@@ -29,7 +29,7 @@ const executeWorkflowStep = (params, options, handler) => {
                 output.then(handlerResult => {
                     LOG.log(`Promise handler result: ${JSON.stringify(handlerResult)}`);
                     wfState.setResults(handlerResult, LOG);
-                    stepExecutor.triggerNext(wfState, LOG).then(nextStepRequest => {
+                    stepExecutor.triggerNext(wfState, security, LOG).then(nextStepRequest => {
                         LOG.log(nextStepRequest);
                         let wfStateCopy = {};
                         Object.assign(wfStateCopy, wfState, {logs: LOG.logs});
@@ -45,7 +45,7 @@ const executeWorkflowStep = (params, options, handler) => {
                 LOG.log(`Synchronous handler result: ${JSON.stringify(output)}`);
                 wfState.setResults(output, LOG);
 
-                stepExecutor.triggerNext(wfState, LOG).then(nextStepRequest => {
+                stepExecutor.triggerNext(wfState, security, LOG).then(nextStepRequest => {
                     LOG.log(nextStepRequest);
                     let wfStateCopy = {};
                     Object.assign(wfStateCopy, wfState, {logs: LOG.logs});

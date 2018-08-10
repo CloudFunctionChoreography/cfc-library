@@ -1,15 +1,16 @@
 {
   "name": "cfc-lib",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "This is a serverless function composition library for cloud function (FaaS) choreography instead of orchestration.",
   "main": "index.js",
   "scripts": {
     "test": "test",
-    "publish-to-npm": "npm publish"
+    "publish-to-npm": "npm publish",
+    "link-locally": "npm link"
   },
   "repository": {
-	"type" : "git", 
-	"url" : "https://github.com/CloudFunctionChoreography/cfc-library"
+    "type": "git",
+    "url": "https://github.com/CloudFunctionChoreography/cfc-library"
   },
   "keywords": [
     "serverless",
