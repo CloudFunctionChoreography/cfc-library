@@ -10,9 +10,7 @@ let functionInstanceUuid;
 let workflows;
 
 const handleCfc = (params, options, handler) => {
-
     const HINT_BLOCKING_TIME = 0;
-
 
     return new Promise((resolve, reject) => {
         // check if request was hint request
@@ -41,22 +39,15 @@ const handleCfc = (params, options, handler) => {
 
 const sendHints = (optimization, wfState, security, LOG) => {
     return new Promise((resolve, reject) => {
-        if (!functionInstanceUuid) {
-            LOG.log("Runtime cold execution");
-            functionInstanceUuid = uuidv1();
-            if(optimization === 1) { // naive hinting
-                LOG.log("User selected naive optimization mechanism --> sending hints");
-                hinting.sendHints(wfState, security, LOG).then(hintingResults => {
-                    resolve(hintingResults)
-                }).catch(hintingErrors => {
-                    reject(hintingErrors)
-                });
-            } else {
-                resolve("User selected no optimization mechanism --> No hints send")
-            }
+        if (optimization === 1) { // naive hinting
+            LOG.log("User selected naive optimization mechanism --> sending hints");
+            hinting.sendHints(wfState, security, LOG).then(hintingResults => {
+                resolve(hintingResults)
+            }).catch(hintingErrors => {
+                reject(hintingErrors)
+            });
         } else {
-            LOG.log("Runtime warm execution --> No hints sent");
-            resolve(`Instance was warm already --> No hints send`);
+            resolve("User selected no optimization mechanism --> No hints send")
         }
     })
 };
@@ -72,16 +63,36 @@ const executeWorkflowStep = (params, options, handler) => {
             workflows = parsedWorkflows;
             let workflowStateParams;
             if (params.workflowState) workflowStateParams = params.workflowState;
-            let wfState = state.createState(workflowStateParams, functionExecitionId, workflows, stateProperties, LOG);
 
+            // If cold execution, set UUID for this function's runtime instance
+            let coldExecution;
+            if (!functionInstanceUuid) {
+                coldExecution = true;
+                functionInstanceUuid = uuidv1();
+                LOG.log("Runtime cold execution");
+            } else {
+                coldExecution = false;
+                LOG.log("Runtime warm execution --> No hints sent");
+            }
 
-            let hintingPromise = sendHints(optimization, wfState, security, LOG);
-            hintingPromise.then(hintingResult => { // TODO promise wo anders auflösen
-                LOG.log(hintingResult);
-            }).catch(err => {
-                LOG.err(err);
-            });
+            // Create current workflow state from the params and context information such as functionExecitionId and functionInstanceUuid
+            let wfState = state.createState(workflowStateParams, functionExecitionId, workflows, Object.assign({functionInstanceUuid: functionInstanceUuid, coldExecution: coldExecution}, stateProperties), LOG);
 
+            /**
+             * Begin: Send hints when cold execution
+             */
+            let hintingPromise;
+            if (coldExecution) {
+                hintingPromise = sendHints(optimization, wfState, security, LOG);
+                hintingPromise.then(hintingResult => { // TODO promise wo anders auflösen
+                    LOG.log(hintingResult);
+                }).catch(err => {
+                    LOG.err(err);
+                });
+            }
+            /**
+             * END: Sending hints when cold execution
+             */
 
             // The handler can either return directly, or return a promise and resolve its result later
             let output = handler(wfState.getThisStepInput());
@@ -122,6 +133,6 @@ const executeWorkflowStep = (params, options, handler) => {
             reject(err);
         });
     });
-}
+};
 
 exports.executeWorkflowStep = handleCfc;
