@@ -14,13 +14,11 @@ const parse = (workflowJsonLocation, LOG) => {
                         reject(err);
                     } else {
                         parsedWorkflows = JSON.parse(data).workflows;
-                        LOG.log("Runtime cold execution");
                         resolve(parsedWorkflows);
                     }
                 }
             );
         } else {
-            LOG.log("Runtime warm execution");
             resolve(parsedWorkflows);
         }
     });

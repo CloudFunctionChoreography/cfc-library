@@ -105,7 +105,7 @@ const triggerLambda = (state, LOG) => {
             method: 'POST',
             headers: {
                 // By default, the Invoke API assumes RequestResponse invocation type.
-                // You can optionally request asynchronous execution by specifying Event as the InvocationType.
+                // You can request asynchronous execution by specifying Event as the InvocationType.
                 'X-Amz-Invocation-Type': 'Event',
                 'X-Amz-Log-Type': 'None',
                 'Content-Type': 'application/json',

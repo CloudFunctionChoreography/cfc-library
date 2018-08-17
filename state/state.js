@@ -7,7 +7,8 @@ class State {
         this.workflowName = workflowState.workflowName;
 
 
-        if (workflowState.currentStep && workflowState.currentStep !== "" && workflowState.executionUuid && workflowState.executionUuid !== "") {
+        if (workflowState.currentStep && workflowState.currentStep !== "" &&
+            workflowState.executionUuid && workflowState.executionUuid !== "") { // workflow already started and this is not first step
             this.currentStep = workflowState.currentStep;
             this.executionUuid = workflowState.executionUuid;
             this.excutionHistory = [...workflowState.excutionHistory, {
@@ -15,8 +16,8 @@ class State {
                 functionExecitionId: functionExecitionId,
                 provider: workflow.workflow[this.currentStep].provider,
                 stateProperties: stateProperties
-            }]
-        } else {
+            }];
+        } else { // new workflow execution
             this.currentStep = workflow.startAt;
             this.executionUuid = uuidv1();
             this.excutionHistory = [{
@@ -24,8 +25,9 @@ class State {
                 functionExecitionId: functionExecitionId,
                 provider: workflow.workflow[this.currentStep].provider,
                 stateProperties: stateProperties
-            }]
+            }];
         }
+        this.optimizationMode = workflowState.optimizationMode ? workflowState.optimizationMode : 0;
         this.results = workflowState.results ? workflowState.results : {inputs: {}, outputs: {}};
         this.fail = {message: null, failState: false};
         this.workflow = workflow;
