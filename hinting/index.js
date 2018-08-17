@@ -1,20 +1,19 @@
 'use strict';
 const https = require('https');
 
-const sendHints = (wfState, security, LOG) => {
+const sendHints = (wfState, security) => {
     return new Promise((resolve, reject) => {
         let promises = [];
         const steps = wfState.workflow.workflow;
         for (let stepName in wfState.workflow.workflow) {
             if (steps[stepName].provider === "openWhisk" && wfState.workflow.startAt !== stepName) {
-                promises.push(hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, LOG))
+                promises.push(hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security))
             } else if (steps[stepName].provider === "aws" && wfState.workflow.startAt !== stepName) {
-                promises.push(hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, LOG))
+                promises.push(hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security))
             }
         }
 
         Promise.all(promises).then(hintingResults => {
-            LOG.log(JSON.stringify(hintingResults));
             resolve(hintingResults)
         }).catch(hintingErrors => {
             reject(hintingErrors)
@@ -22,7 +21,7 @@ const sendHints = (wfState, security, LOG) => {
     })
 };
 
-const hintLambda = (hostname, path, LOG) => {
+const hintLambda = (hostname, path) => {
     return new Promise((resolve, reject) => {
 
         const postData = JSON.stringify({hintFlag: true});
@@ -49,7 +48,6 @@ const hintLambda = (hostname, path, LOG) => {
         });
 
         req.on('error', (err) => {
-            LOG.log(`Hint to Lambda function (${hostname}${path}) failed: ${err.message}`);
             reject(err.message);
         });
 
@@ -60,7 +58,7 @@ const hintLambda = (hostname, path, LOG) => {
 };
 
 
-const hintOpenWhisk = (hostname, path, security, LOG) => {
+const hintOpenWhisk = (hostname, path, security) => {
     return new Promise((resolve, reject) => {
 
         const postData = JSON.stringify({hintFlag: true});
@@ -85,7 +83,6 @@ const hintOpenWhisk = (hostname, path, security, LOG) => {
         });
 
         req.on('error', (err) => {
-            LOG.log(`Hint to OpenWhisk function (${hostname}${path}) failed: ${err.message}`);
             reject(err.message);
         });
 

@@ -14,7 +14,7 @@ const handleCfc = (params, options, handler) => {
 
     return new Promise((resolve, reject) => {
         // check if request was hint request
-        if (params.hintFlag) { // TODO request is hint
+        if (params.hintFlag) { // request is hint
             // check if this is a warm or cold execution
             if (functionInstanceUuid) { // warm: immediately resolve
                 console.log(`Received hint, but instance was already warm --> immediate return. Instance ID: ${functionInstanceUuid}`);
@@ -37,11 +37,25 @@ const handleCfc = (params, options, handler) => {
     })
 };
 
-const sendHints = (optimization, wfState, security, LOG) => {
+const sendHints = (wfState, security, LOG) => {
     return new Promise((resolve, reject) => {
-        if (optimization === 1) { // naive hinting
-            LOG.log("User selected naive optimization mechanism --> sending hints");
-            hinting.sendHints(wfState, security, LOG).then(hintingResults => {
+        if (wfState.optimizationMode === 1) { // naive hinting: if first function in workflow receives request and is cold, it hints all others
+            if (wfState.currentStep === wfState.workflow.startAt) { // this function is executed as first step in workflow
+                LOG.log("User selected naive optimization mechanism --> First function is sending hints");
+                hinting.sendHints(wfState, security).then(hintingResults => {
+                    resolve(hintingResults)
+                }).catch(hintingErrors => {
+                    reject(hintingErrors)
+                });
+            } else { // This function is not executed as first step in workflow
+                resolve(`User selected naive optimization mechanism, but this function is executed as step ${wfState.currentStep} instead of first step (${wfState.workflow.startAt}) in the workflow --> No hints send`)
+            }
+        } else if (wfState.optimizationMode === 2) { // naive hinting v2: every function that is cold when it receives a request sends a hint
+            // Note: It can happen that the first function of the workflow already send hints to all others,
+            // but step 2 gets executed as cold because the hint was not processed yet. Then function2 will
+            // send hints again for the same workflow execution.
+            LOG.log("User selected extended naive optimization mechanism (every function that is cold when it receives a request sends a hint) --> sending hints");
+            hinting.sendHints(wfState, security).then(hintingResults => { //TODO change sendHints so it only sends to functions AFTER this one
                 resolve(hintingResults)
             }).catch(hintingErrors => {
                 reject(hintingErrors)
@@ -55,7 +69,7 @@ const sendHints = (optimization, wfState, security, LOG) => {
 const executeWorkflowStep = (params, options, handler) => {
     /** If workflows haven't been read from file already, we do it here (this is only done in case of cold starts).
      Afterwards, the actual handler will be called. **/
-    let {functionExecitionId, stateProperties, workflowsLocation, security, optimization} = options;
+    let {functionExecitionId, stateProperties, workflowsLocation, security} = options;
 
     return new Promise((resolve, reject) => {
         const LOG = new Logger();
@@ -76,18 +90,21 @@ const executeWorkflowStep = (params, options, handler) => {
             }
 
             // Create current workflow state from the params and context information such as functionExecitionId and functionInstanceUuid
-            let wfState = state.createState(workflowStateParams, functionExecitionId, workflows, Object.assign({functionInstanceUuid: functionInstanceUuid, coldExecution: coldExecution}, stateProperties), LOG);
+            let wfState = state.createState(workflowStateParams, functionExecitionId, workflows, Object.assign({
+                functionInstanceUuid: functionInstanceUuid,
+                coldExecution: coldExecution
+            }, stateProperties), LOG);
 
             /**
              * Begin: Send hints when cold execution
              */
             let hintingPromise;
             if (coldExecution) {
-                hintingPromise = sendHints(optimization, wfState, security, LOG);
+                hintingPromise = sendHints(wfState, security, LOG);
                 hintingPromise.then(hintingResult => { // TODO promise wo anders auflösen
-                    LOG.log(hintingResult);
+                    // LOG.log(hintingResult);
                 }).catch(err => {
-                    LOG.err(err);
+                    // LOG.err(err);
                 });
             }
             /**
