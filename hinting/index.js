@@ -1,15 +1,17 @@
 'use strict';
 const https = require('https');
+const hintReceiver = require('./hintReceiver');
+const hintSender = require('./hintSender');
 
-const sendHints = (wfState, security) => {
+const sendHints = (wfState, functionInstanceUuid, functionExecutionId, security) => {
     return new Promise((resolve, reject) => {
         let promises = [];
         const steps = wfState.workflow.workflow;
         for (let stepName in wfState.workflow.workflow) {
             if (steps[stepName].provider === "openWhisk" && wfState.workflow.startAt !== stepName) {
-                promises.push(hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security))
+                promises.push(hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, wfState, functionInstanceUuid, stepName, functionExecutionId))
             } else if (steps[stepName].provider === "aws" && wfState.workflow.startAt !== stepName) {
-                promises.push(hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security))
+                promises.push(hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, wfState, functionInstanceUuid, stepName, functionExecutionId))
             }
         }
 
@@ -21,10 +23,21 @@ const sendHints = (wfState, security) => {
     })
 };
 
-const hintLambda = (hostname, path) => {
+const hintLambda = (hostname, path, security, wfState, functionInstanceUuid, stepName, functionExecutionId) => {
     return new Promise((resolve, reject) => {
 
-        const postData = JSON.stringify({hintFlag: true});
+        const postData = JSON.stringify({
+            hintMessage: {
+                triggeredFrom: {
+                    functionExecutionId: functionExecutionId,
+                    functionInstanceUuid: functionInstanceUuid,
+                    step: wfState.currentStep,
+                    wfState: wfState.executionUuid
+                },
+                optimizationMode: wfState.optimizationMode,
+                stepName: stepName
+            }
+        });
         const options = {
             hostname: hostname,
             path: path,
@@ -58,10 +71,21 @@ const hintLambda = (hostname, path) => {
 };
 
 
-const hintOpenWhisk = (hostname, path, security) => {
+const hintOpenWhisk = (hostname, path, security, wfState, functionInstanceUuid, stepName, functionExecutionId) => {
     return new Promise((resolve, reject) => {
 
-        const postData = JSON.stringify({hintFlag: true});
+        const postData = JSON.stringify({
+            hintMessage: {
+                triggeredFrom: {
+                    functionExecutionId: functionExecutionId,
+                    functionInstanceUuid: functionInstanceUuid,
+                    step: wfState.currentStep,
+                    wfState: wfState.executionUuid
+                },
+                optimizationMode: wfState.optimizationMode,
+                stepName: stepName
+            }
+        });
         const auth = 'Basic ' + Buffer.from(security.openWhisk.owApiAuthKey + ':' + security.openWhisk.owApiAuthPassword).toString('base64');
         const options = {
             hostname: hostname,
@@ -93,3 +117,4 @@ const hintOpenWhisk = (hostname, path, security) => {
 };
 
 exports.sendHints = sendHints;
+exports.handleHintMessage = hintReceiver.handleHintMessage;

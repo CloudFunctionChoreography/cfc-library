@@ -3,7 +3,7 @@ const choiceValidator = require('./choice-validator');
 const uuidv1 = require('uuid/v1');
 
 class State {
-    constructor(workflowState, functionExecitionId, workflow, stateProperties) {
+    constructor(workflowState, functionExecutionId, workflow, stateProperties) {
         this.workflowName = workflowState.workflowName;
 
 
@@ -13,7 +13,7 @@ class State {
             this.executionUuid = workflowState.executionUuid;
             this.excutionHistory = [...workflowState.excutionHistory, {
                 step: this.currentStep,
-                functionExecitionId: functionExecitionId,
+                functionExecutionId: functionExecutionId,
                 provider: workflow.workflow[this.currentStep].provider,
                 stateProperties: stateProperties
             }];
@@ -22,7 +22,7 @@ class State {
             this.executionUuid = uuidv1();
             this.excutionHistory = [{
                 step: this.currentStep,
-                functionExecitionId: functionExecitionId,
+                functionExecutionId: functionExecutionId,
                 provider: workflow.workflow[this.currentStep].provider,
                 stateProperties: stateProperties
             }];

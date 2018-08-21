@@ -2,14 +2,14 @@
 
 const State = require('./state');
 
-const createState = (workflowState, functionExecitionId, workflows, stateProperties, LOG) => {
+const createState = (workflowState, functionExecutionId, workflows, stateProperties, LOG) => {
     let workflow;
     for (let workflowObject of workflows) {
         if (workflowObject.name === workflowState.workflowName) workflow = workflowObject;
     }
 
     if (workflow) {
-        let state = new State(workflowState, functionExecitionId, workflow, stateProperties);
+        let state = new State(workflowState, functionExecutionId, workflow, stateProperties);
         //LOG.log(`state ${JSON.stringify(state)}`);
         return state;
     } else {
