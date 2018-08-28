@@ -1,120 +1,43 @@
 'use strict';
-const https = require('https');
+
 const hintReceiver = require('./hintReceiver');
 const hintSender = require('./hintSender');
 
-const sendHints = (wfState, functionInstanceUuid, functionExecutionId, security) => {
+
+const sendHints = (wfState, functionExecutionId, security, functionInstanceUuid, LOG) => {
     return new Promise((resolve, reject) => {
-        let promises = [];
-        const steps = wfState.workflow.workflow;
-        for (let stepName in wfState.workflow.workflow) {
-            if (steps[stepName].provider === "openWhisk" && wfState.workflow.startAt !== stepName) {
-                promises.push(hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, wfState, functionInstanceUuid, stepName, functionExecutionId))
-            } else if (steps[stepName].provider === "aws" && wfState.workflow.startAt !== stepName) {
-                promises.push(hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, wfState, functionInstanceUuid, stepName, functionExecutionId))
+        if (wfState.optimizationMode === 1) { // naive hinting: if first function in workflow receives request and is cold, it hints all others
+            if (wfState.currentStep === wfState.workflow.startAt) { // this function is executed as first step in workflow
+                LOG.log("User selected naive optimization mechanism --> First function is sending hints");
+                hintSender.sendHintsNaive(wfState, functionInstanceUuid, functionExecutionId, security).then(hintingResults => {
+                    resolve(hintingResults)
+                }).catch(hintingErrors => {
+                    reject(hintingErrors)
+                });
+            } else { // This function is not executed as first step in workflow
+                resolve(`User selected naive optimization mechanism, but this function is executed as step ${wfState.currentStep} instead of first step (${wfState.workflow.startAt}) in the workflow --> No hints send`)
             }
+        } else if (wfState.optimizationMode === 2) { // naive hinting v2: every function that is cold when it receives a request sends a hint
+            // Note: It can happen that the first function of the workflow already send hints to all others,
+            // but step 2 gets executed as cold because the hint was not processed yet. Then function2 will
+            // send hints again for the same workflow execution.
+            LOG.log("User selected extended naive optimization mechanism (every function that is cold when it receives a request sends a hint) --> sending hints");
+            hintSender.sendHintsNaive(wfState, functionInstanceUuid, functionExecutionId, security).then(hintingResults => { //TODO change sendHints so it only sends to functions AFTER this one
+                resolve(hintingResults)
+            }).catch(hintingErrors => {
+                reject(hintingErrors)
+            });
+        } else {
+            resolve("User selected no optimization mechanism --> No hints send")
         }
-
-        Promise.all(promises).then(hintingResults => {
-            resolve(hintingResults)
-        }).catch(hintingErrors => {
-            reject(hintingErrors)
-        })
     })
 };
 
-const hintLambda = (hostname, path, security, wfState, functionInstanceUuid, stepName, functionExecutionId) => {
-    return new Promise((resolve, reject) => {
-
-        const postData = JSON.stringify({
-            hintMessage: {
-                triggeredFrom: {
-                    functionExecutionId: functionExecutionId,
-                    functionInstanceUuid: functionInstanceUuid,
-                    step: wfState.currentStep,
-                    wfState: wfState.executionUuid
-                },
-                optimizationMode: wfState.optimizationMode,
-                stepName: stepName
-            }
-        });
-        const options = {
-            hostname: hostname,
-            path: path,
-            method: 'POST',
-            headers: {
-                // By default, the Invoke API assumes RequestResponse invocation type.
-                // You can optionally request asynchronous execution by specifying Event as the InvocationType.
-                'X-Amz-Invocation-Type': 'Event',
-                'X-Amz-Log-Type': 'None',
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(postData)
-            }
-        };
-
-        let req = https.request(options, (res) => {
-            res.setEncoding('utf8');
-            res.resume();
-            res.on('end', () => {
-                resolve(`Lambda function was hinted ${hostname}${path}`);
-            });
-        });
-
-        req.on('error', (err) => {
-            reject(err.message);
-        });
-
-        // write data to request body
-        req.write(postData);
-        req.end();
-    })
+const handleHintMessage = (functionInstanceUuid, options, params) => {
+    return hintReceiver.handleHintMessage(functionInstanceUuid, options, params);
 };
 
 
-const hintOpenWhisk = (hostname, path, security, wfState, functionInstanceUuid, stepName, functionExecutionId) => {
-    return new Promise((resolve, reject) => {
-
-        const postData = JSON.stringify({
-            hintMessage: {
-                triggeredFrom: {
-                    functionExecutionId: functionExecutionId,
-                    functionInstanceUuid: functionInstanceUuid,
-                    step: wfState.currentStep,
-                    wfState: wfState.executionUuid
-                },
-                optimizationMode: wfState.optimizationMode,
-                stepName: stepName
-            }
-        });
-        const auth = 'Basic ' + Buffer.from(security.openWhisk.owApiAuthKey + ':' + security.openWhisk.owApiAuthPassword).toString('base64');
-        const options = {
-            hostname: hostname,
-            path: path + "?blocking=false",
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(postData),
-                'Authorization': auth
-            }
-        };
-
-        let req = https.request(options, (res) => {
-            res.setEncoding('utf8');
-            res.resume();
-            res.on('end', () => {
-                resolve(`OpenWhisk function was hinted ${hostname}${path}`);
-            });
-        });
-
-        req.on('error', (err) => {
-            reject(err.message);
-        });
-
-        // write data to request body
-        req.write(postData);
-        req.end();
-    })
-};
 
 exports.sendHints = sendHints;
-exports.handleHintMessage = hintReceiver.handleHintMessage;
+exports.handleHintMessage = handleHintMessage;
