@@ -15,7 +15,7 @@ const handleCfc = (params, options, handler) => {
     return new Promise((resolve, reject) => {
         // check if request was hint request
         if (params.hintMessage) { // request is hint
-            hinting.handleHintMessage(functionInstanceUuid, options, params).then(hintResult => {
+            hinting.handleHintMessage(functionInstanceUuid, params.hintMessage, options, params).then(hintResult => {
                 if (hintResult.functionInstanceUuid) functionInstanceUuid = hintResult.functionInstanceUuid;
                 resolve(hintResult)
             }).catch(hintError => {

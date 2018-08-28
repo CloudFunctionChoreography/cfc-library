@@ -27,16 +27,22 @@ const sendHints = (wfState, functionExecutionId, security, functionInstanceUuid,
             }).catch(hintingErrors => {
                 reject(hintingErrors)
             });
+        } else if (wfState.optimizationMode === 3) { // Heuristic
+            LOG.log(`User selected heuristic-based optimization approach --> sending hints to ${wfState.workflow.workflow[wfState.currentStep].provider} functions and alert function of other provider to send hints`);
+            hintSender.sendHintsHeuristic(wfState, functionInstanceUuid, functionExecutionId, security).then(hintingResults => {
+                resolve(hintingResults)
+            }).catch(hintingErrors => {
+                reject(hintingErrors)
+            });
         } else {
             resolve("User selected no optimization mechanism --> No hints send")
         }
     })
 };
 
-const handleHintMessage = (functionInstanceUuid, options, params) => {
-    return hintReceiver.handleHintMessage(functionInstanceUuid, options, params);
+const handleHintMessage = (functionInstanceUuid, hintMessage, options, params) => {
+    return hintReceiver.handleHintMessage(functionInstanceUuid, hintMessage, options, params);
 };
-
 
 
 exports.sendHints = sendHints;
