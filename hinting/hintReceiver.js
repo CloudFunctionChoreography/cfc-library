@@ -83,7 +83,7 @@ const sendRecursiveHeuristicHint = (workflow, hintMessage, security, functionExe
         const currentStep = hintMessage.stepName;
         const steps = workflow.workflow;
         let hintCounter = hintMessage.recursiveHintCounter;
-        if (!hintCounter) hintCounter = 1;
+        if (!hintCounter) hintCounter = 0;
 
         if (hintCounter < 3) {
             let postObject = {
@@ -139,7 +139,7 @@ const sendHeuristicHint = (workflow, hintMessage, security, functionExecutionId,
                         wfState: hintMessage.triggeredFrom.wfState
                     },
                     optimizationMode: hintMessage.optimizationMode,
-                    stepName: currentStep,
+                    stepName: stepName,
                     hintProxy: false,
                     workflowName: workflow.name
                 }
