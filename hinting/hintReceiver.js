@@ -104,9 +104,9 @@ const sendRecursiveHeuristicHint = (workflow, hintMessage, security, functionExe
 
             let promise;
             if (steps[currentStep].provider === "openWhisk") {
-                promise = util.hintOpenWhisk(steps[currentStep].functionEndpoint.hostname, steps[currentStep].functionEndpoint.path, security, postObject, true)
+                promise = util.hintOpenWhisk(steps[currentStep].functionEndpoint.hostname, steps[currentStep].functionEndpoint.path, security, postObject, false)
             } else if (steps[currentStep].provider === "aws") {
-                promise = util.hintLambda(steps[currentStep].functionEndpoint.hostname, steps[currentStep].functionEndpoint.path, security, postObject, true)
+                promise = util.hintLambda(steps[currentStep].functionEndpoint.hostname, steps[currentStep].functionEndpoint.path, security, postObject, false)
             }
 
             promise.then(recursiveHintResult => {

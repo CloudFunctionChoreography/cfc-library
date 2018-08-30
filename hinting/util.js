@@ -6,7 +6,7 @@ const hintLambda = (hostname, path, security, postObject, blocking = false) => {
     return new Promise((resolve, reject) => {
 
         let invocationType = "Event";
-        if (blocking) invocationType = "RequestResponse"
+        if (blocking) invocationType = "RequestResponse";
 
 
         const postData = JSON.stringify(postObject);
