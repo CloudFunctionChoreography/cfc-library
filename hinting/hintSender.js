@@ -20,18 +20,24 @@ const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, 
                     },
                     optimizationMode: wfState.optimizationMode,
                     stepName: stepName,
-                    hintProxy: false
+                    hintProxy: false,
+                    workflowName: wfState.workflowName
                 }
             };
 
-            if (steps[stepName].provider === currentProvider && currentStep === wfState.workflow.startAt) { // Send hints to functions which belong to own provider
+            if (steps[stepName].provider === currentProvider && wfState.currentStep === wfState.workflow.startAt && stepName !== wfState.workflow.startAt) { // Send hints to functions which belong to own provider
+                console.log(`DEBUG: steps[stepName].provider: ${steps[stepName].provider}, currentProvider: ${currentProvider}, wfState.currentStep: ${wfState.currentStep}, wfState.workflow.startAt: ${wfState.workflow.startAt} ==> ${steps[stepName].provider === currentProvider && wfState.currentStep === wfState.workflow.startAt}`)
+
+
                 if (steps[stepName].provider === "openWhisk") {
                     promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
                 } else if (steps[stepName].provider === "aws") {
                     promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
                 }
-            } else if (steps[stepName].provider !== currentProvider && currentStep === wfState.workflow.startAt && !sentHintToProxy) { // Send special hint to proxy
+            } else if (steps[stepName].provider !== currentProvider && wfState.currentStep === wfState.workflow.startAt && !sentHintToProxy && stepName !== wfState.workflow.startAt) { // Send special hint to proxy
                 sentHintToProxy = true;
+                console.log(`sending hint to ${steps[stepName].provider} ${stepName} proxy function`);
+                postObject.hintMessage.provider = steps[stepName].provider;
                 postObject.hintMessage.hintProxy = true;
                 if (steps[stepName].provider === "openWhisk") {
                     promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))

@@ -10,7 +10,6 @@ let functionInstanceUuid;
 let workflows;
 
 
-
 const handleCfc = (params, options, handler) => {
     return new Promise((resolve, reject) => {
         // check if request was hint request
@@ -30,7 +29,6 @@ const handleCfc = (params, options, handler) => {
         }
     })
 };
-
 
 
 const executeWorkflowStep = (params, options, handler) => {
@@ -71,14 +69,14 @@ const executeWorkflowStep = (params, options, handler) => {
                 hintingPromise.then(hintingResult => { // TODO promise wo anders auflösen
                     // LOG.log(hintingResult);
                 }).catch(err => {
-                    // LOG.err(err);
+                    LOG.err(err);
                 });
             }
             /**
              * END: Sending hints when cold execution
              */
 
-            // The handler can either return directly, or return a promise and resolve its result later
+                // The handler can either return directly, or return a promise and resolve its result later
             let output = handler(wfState.getThisStepInput());
             if (typeof output.then === "function") {
                 // In this case the handler returns a promise
