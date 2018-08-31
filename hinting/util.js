@@ -28,11 +28,13 @@ const hintLambda = (hostname, path, security, postObject, blocking = false) => {
             res.setEncoding('utf8');
             res.resume();
             res.on('end', () => {
+                // console.log(`Lambda function was hinted ${hostname}${path}`);
                 resolve(`Lambda function was hinted ${hostname}${path}`);
             });
         });
 
         req.on('error', (err) => {
+            console.log(`Lambda function was hinted BUT error: ${err.message}`);
             reject(err.message);
         });
 
@@ -65,7 +67,7 @@ const hintOpenWhisk = (hostname, path, security, postObject, blocking = false) =
             res.setEncoding('utf8');
             res.resume();
             res.on('end', () => {
-                console.log(`OpenWhisk function was hinted ${hostname}${path}`);
+                // console.log(`OpenWhisk function was hinted ${hostname}${path}`);
                 resolve(`OpenWhisk function was hinted ${hostname}${path}`);
             });
         });
