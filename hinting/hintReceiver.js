@@ -31,7 +31,6 @@ const handleModeHeuristic = (options, functionInstanceUuid, hintMessage, params)
                 if (hintMessage.hintProxy) { // If hintProxy --> send hints
                     sendHeuristicHint(workflow, hintMessage, security, functionExecutionId, functionInstanceUuid).then(proxyHints => {
                         console.log(`PROXY_HINTS:${JSON.stringify(proxyHints)}`);
-                        //TODO test recursive self hinting
                         sendRecursiveHeuristicHint(workflow, hintMessage, security, functionExecutionId, functionInstanceUuid).then(recursiveHintingResult => {
                             console.log(`RECURSIVE HINTING RESULT: ${recursiveHintingResult}`);
                             resolve(workflowHintResult)
@@ -110,7 +109,7 @@ const sendRecursiveHeuristicHint = (workflow, hintMessage, security, functionExe
             }
 
             promise.then(recursiveHintResult => {
-                resolve(recursiveHintResult)
+                setTimeout(() => {resolve(recursiveHintResult)}, 150)
             }).catch(recursiveHintError => {
                 reject(recursiveHintError)
             })

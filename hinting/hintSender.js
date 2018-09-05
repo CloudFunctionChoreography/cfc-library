@@ -26,8 +26,6 @@ const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, 
             };
 
             if (steps[stepName].provider === currentProvider && wfState.currentStep === wfState.workflow.startAt && stepName !== wfState.workflow.startAt) { // Send hints to functions which belong to own provider
-                // console.log(`DEBUG: steps[stepName].provider: ${steps[stepName].provider}, currentProvider: ${currentProvider}, wfState.currentStep: ${wfState.currentStep}, wfState.workflow.startAt: ${wfState.workflow.startAt} ==> ${steps[stepName].provider === currentProvider && wfState.currentStep === wfState.workflow.startAt}`)
-
                 if (steps[stepName].provider === "openWhisk") {
                     promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
                 } else if (steps[stepName].provider === "aws") {
