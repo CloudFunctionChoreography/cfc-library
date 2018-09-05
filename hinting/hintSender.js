@@ -1,7 +1,7 @@
 'use strict';
 const util = require('./util');
 
-const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, security) => {
+const sendHintsHeuristicProviderSeperation = (wfState, functionInstanceUuid, functionExecutionId, security) => {
     return new Promise((resolve, reject) => {
         let promises = [];
         const steps = wfState.workflow.workflow;
@@ -71,6 +71,43 @@ const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, 
     })
 };
 
+const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, security) => {
+    return new Promise((resolve, reject) => {
+        let promises = [];
+        const steps = wfState.workflow.workflow;
+        for (let stepName in wfState.workflow.workflow) {
+            let postObject = {
+                hintMessage: {
+                    triggeredFrom: {
+                        functionExecutionId: functionExecutionId,
+                        functionInstanceUuid: functionInstanceUuid,
+                        step: wfState.currentStep,
+                        wfState: wfState.executionUuid
+                    },
+                    optimizationMode: wfState.optimizationMode,
+                    stepName: stepName,
+                    hintProxy: false,
+                    workflowName: wfState.workflowName
+                }
+            };
+
+            if (wfState.currentStep === wfState.workflow.startAt && stepName !== wfState.workflow.startAt) { // Send hints to functions which belong to own provider
+                if (steps[stepName].provider === "openWhisk") {
+                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
+                } else if (steps[stepName].provider === "aws") {
+                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
+                }
+            }
+        }
+
+        Promise.all(promises).then(hintingResults => {
+            resolve(hintingResults)
+        }).catch(hintingErrors => {
+            reject(hintingErrors)
+        })
+    })
+};
+
 
 const sendHintsNaive = (wfState, functionInstanceUuid, functionExecutionId, security) => {
     return new Promise((resolve, reject) => {
@@ -116,5 +153,6 @@ const sendHintsNaive = (wfState, functionInstanceUuid, functionExecutionId, secu
     })
 };
 
+exports.sendHintsHeuristicProviderSeperation = sendHintsHeuristicProviderSeperation;
 exports.sendHintsHeuristic = sendHintsHeuristic;
 exports.sendHintsNaive = sendHintsNaive;

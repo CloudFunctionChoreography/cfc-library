@@ -34,6 +34,13 @@ const sendHints = (wfState, functionExecutionId, security, functionInstanceUuid,
             }).catch(hintingErrors => {
                 reject(hintingErrors)
             });
+        } else if (wfState.optimizationMode === 4) { // Heuristic with provider separation
+            LOG.log(`User selected heuristic-based optimization approach --> sending hints to ${wfState.workflow.workflow[wfState.currentStep].provider} functions and alert function of other provider to send hints`);
+            hintSender.sendHintsHeuristicProviderSeperation(wfState, functionInstanceUuid, functionExecutionId, security).then(hintingResults => {
+                resolve(hintingResults)
+            }).catch(hintingErrors => {
+                reject(hintingErrors)
+            });
         } else {
             resolve("User selected no optimization mechanism --> No hints send")
         }
