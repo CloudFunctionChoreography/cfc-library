@@ -1,6 +1,42 @@
 'use strict';
 
 const https = require('https');
+const http = require('http');
+
+const postCfcMonitor = (hostname, path, port, security, postObject) => {
+    return new Promise((resolve, reject) => {
+        const postData = JSON.stringify(postObject);
+        const options = {
+            hostname: hostname,
+            path: path,
+            port: port,
+            method: 'POST',
+            headers: {
+                // By default, the Invoke API assumes RequestResponse invocation type.
+                // You can optionally request asynchronous execution by specifying Event as the InvocationType.
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData)
+            }
+        };
+
+        let req = http.request(options, (res) => {
+            res.setEncoding('utf8');
+            res.resume();
+            res.on('end', () => {
+                resolve(`Report was sent to cfc-stateMonitor ${hostname}${path}`);
+            });
+        });
+
+        req.on('error', (err) => {
+            console.log(`Report was sent to cfc-stateMonitor ${hostname}${path} BUT error: ${err.message}`);
+            reject(err.message);
+        });
+
+        // write data to request body
+        req.write(postData);
+        req.end();
+    });
+};
 
 const hintLambda = (hostname, path, security, postObject, blocking = false) => {
     return new Promise((resolve, reject) => {
@@ -85,3 +121,4 @@ const hintOpenWhisk = (hostname, path, security, postObject, blocking = false) =
 
 exports.hintOpenWhisk = hintOpenWhisk;
 exports.hintLambda = hintLambda;
+exports.postCfcMonitor = postCfcMonitor;

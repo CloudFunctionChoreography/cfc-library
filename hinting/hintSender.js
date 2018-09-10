@@ -1,6 +1,40 @@
 'use strict';
 const util = require('./util');
 
+const sendReportToStateMonitor = (wfState, functionInstanceUuid, functionExecutionId, wasCold, security) => {
+    const hostname = "18.209.212.126"; // TODO declare cfc-stateMonitor endpoint in workflow.json
+    const port = "8080";
+    const path = "/stepExecution"; // TODO declare cfc-stateMonitor endpoint in workflow.json
+    return new Promise((resolve, reject) => {
+        const postObject = {
+            workflowName: wfState.workflowName,
+            stepName: wfState.currentStep,
+            workflowExecutionUuid: wfState.executionUuid,
+            stepExecutionUuid: functionExecutionId,
+            instanceUuid: functionInstanceUuid,
+            receiveTime: 1351235, // TODO
+
+        };
+
+        if (wasCold) {
+            postObject.coldExecution = {
+                wasCold: wasCold,
+                initTime: 800 // TODO
+            }
+        } else {
+            postObject.lastExecutionDuration = 510; // TODO
+            postObject.lastNetworkLatencyToNextStep = 200 // TODO
+        }
+
+        util.postCfcMonitor(hostname, path, port, security, postObject).then(postResult => {
+            resolve(postResult)
+        }).catch(postError => {
+            console.log(postError)
+            reject(postError)
+        })
+    });
+};
+
 const sendHintsHeuristicProviderSeperation = (wfState, functionInstanceUuid, functionExecutionId, security) => {
     return new Promise((resolve, reject) => {
         let promises = [];
@@ -68,6 +102,12 @@ const sendHintsHeuristicProviderSeperation = (wfState, functionInstanceUuid, fun
         }).catch(hintingErrors => {
             reject(hintingErrors)
         })
+
+        // TODO this should depend on whether the second step is AWS or OpenWhisk and if step1 is the same or the other one respectively
+        const blockTime = wfState.currentStep === wfState.workflow.startAt ? 700 : 0;
+        setTimeout(() => {
+            resolve("Sending heuristic hints")
+        }, blockTime)
     })
 };
 
@@ -100,14 +140,19 @@ const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, 
             }
         }
 
-        Promise.all(promises).then(hintingResults => {
+        /* Promise.all(promises).then(hintingResults => {
             resolve(hintingResults)
         }).catch(hintingErrors => {
             reject(hintingErrors)
-        })
+        }) */
+
+        // TODO this should depend on whether the second step is AWS or OpenWhisk and if step1 is the same or the other one respectively
+        const blockTime = wfState.currentStep === wfState.workflow.startAt ? 700 : 0;
+        setTimeout(() => {
+            resolve("Sending heuristic hints")
+        }, blockTime)
     })
 };
-
 
 const sendHintsNaive = (wfState, functionInstanceUuid, functionExecutionId, security) => {
     return new Promise((resolve, reject) => {
@@ -145,14 +190,17 @@ const sendHintsNaive = (wfState, functionInstanceUuid, functionExecutionId, secu
             }
         }
 
-        Promise.all(promises).then(hintingResults => {
+        /* Promise.all(promises).then(hintingResults => {
             resolve(hintingResults)
         }).catch(hintingErrors => {
             reject(hintingErrors)
-        })
+        }) */
+
+        resolve("Sending naive hints")
     })
 };
 
 exports.sendHintsHeuristicProviderSeperation = sendHintsHeuristicProviderSeperation;
 exports.sendHintsHeuristic = sendHintsHeuristic;
 exports.sendHintsNaive = sendHintsNaive;
+exports.sendReportToStateMonitor = sendReportToStateMonitor;

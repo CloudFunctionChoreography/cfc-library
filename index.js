@@ -21,7 +21,7 @@ const handleCfc = (params, options, handler) => {
                 reject(hintError)
             });
         } else { // request was no hint: normal execution
-            executeWorkflowStep(params, options, handler).then(response => {
+            parseAndHint(params, options, handler).then(response => {
                 resolve(response)
             }).catch(error => {
                 reject(error)
@@ -30,8 +30,51 @@ const handleCfc = (params, options, handler) => {
     })
 };
 
+const executeWorkflowStep = (options, handler, LOG, wfState) => {
 
-const executeWorkflowStep = (params, options, handler) => {
+    return new Promise((resolve, reject) => {
+
+        let {security} = options;
+
+        // The handler can either return directly, or return a promise and resolve its result later
+        let output = handler(wfState.getThisStepInput());
+        if (typeof output.then === "function") {
+            // In this case the handler returns a promise
+            output.then(handlerResult => {
+                LOG.log(`Promise handler result: ${JSON.stringify(handlerResult)}`);
+                wfState.setResults(handlerResult, LOG);
+                stepExecutor.triggerNext(wfState, security, LOG).then(nextStepRequest => {
+                    LOG.log(nextStepRequest);
+                    let wfStateCopy = {};
+                    Object.assign(wfStateCopy, wfState, {logs: LOG.logs});
+                    delete wfStateCopy.workflow;
+                    LOG.log(`LOG_WORKFLOW_STATE:${JSON.stringify(wfStateCopy)}`);
+                    resolve(wfState);
+                }).catch(err => {
+                    LOG.err(err);
+                    reject(err);
+                });
+            });
+        } else {
+            LOG.log(`Synchronous handler result: ${JSON.stringify(output)}`);
+            wfState.setResults(output, LOG);
+
+            stepExecutor.triggerNext(wfState, security, LOG).then(nextStepRequest => {
+                LOG.log(nextStepRequest);
+                let wfStateCopy = {};
+                Object.assign(wfStateCopy, wfState, {logs: LOG.logs});
+                delete wfStateCopy.workflow;
+                LOG.log(`LOG_WORKFLOW_STATE:${JSON.stringify(wfStateCopy)}`);
+                resolve(wfState);
+            }).catch(nextStepRequestError => {
+                LOG.err(nextStepRequestError);
+                reject(nextStepRequestError);
+            });
+        }
+    })
+}
+
+const parseAndHint = (params, options, handler) => {
     /** If workflows haven't been read from file already, we do it here (this is only done in case of cold starts).
      Afterwards, the actual handler will be called. **/
     let {functionExecutionId, stateProperties, workflowsLocation, security} = options;
@@ -60,57 +103,43 @@ const executeWorkflowStep = (params, options, handler) => {
                 coldExecution: coldExecution
             }, stateProperties), LOG);
 
+            /** Begin: Send Report **/
+            let reportPromise = null;
+            if (wfState.optimizationMode === 5) {
+                reportPromise = hinting.sendReportToCfcStateMonitor(wfState, functionExecutionId, security, functionInstanceUuid, coldExecution, LOG);
+                // TODO resolve
+            }
+            /** End: Send Report **/
+
+
+
             /**
              * Begin: Send hints when cold execution
              */
             let hintingPromise;
             if (coldExecution) {
                 hintingPromise = hinting.sendHints(wfState, functionExecutionId, security, functionInstanceUuid, LOG);
-                hintingPromise.then(hintingResult => { // TODO promise wo anders auflösen
-                    // LOG.log(hintingResult);
+                hintingPromise.then(hintingResult => {
+                    executeWorkflowStep(options, handler, LOG, wfState).then(result => {
+                        resolve(result)
+                    }).catch(err => {
+                        reject(err)
+                    })
                 }).catch(err => {
                     LOG.err(err);
                 });
+            } else {
+                executeWorkflowStep(options, handler, LOG, wfState).then(result => {
+                    resolve(result)
+                }).catch(err => {
+                    reject(err)
+                })
             }
             /**
              * END: Sending hints when cold execution
              */
 
-                // The handler can either return directly, or return a promise and resolve its result later
-            let output = handler(wfState.getThisStepInput());
-            if (typeof output.then === "function") {
-                // In this case the handler returns a promise
-                output.then(handlerResult => {
-                    LOG.log(`Promise handler result: ${JSON.stringify(handlerResult)}`);
-                    wfState.setResults(handlerResult, LOG);
-                    stepExecutor.triggerNext(wfState, security, LOG).then(nextStepRequest => {
-                        LOG.log(nextStepRequest);
-                        let wfStateCopy = {};
-                        Object.assign(wfStateCopy, wfState, {logs: LOG.logs});
-                        delete wfStateCopy.workflow;
-                        LOG.log(`LOG_WORKFLOW_STATE:${JSON.stringify(wfStateCopy)}`);
-                        resolve(wfState);
-                    }).catch(err => {
-                        LOG.err(err);
-                        reject(err);
-                    });
-                });
-            } else {
-                LOG.log(`Synchronous handler result: ${JSON.stringify(output)}`);
-                wfState.setResults(output, LOG);
 
-                stepExecutor.triggerNext(wfState, security, LOG).then(nextStepRequest => {
-                    LOG.log(nextStepRequest);
-                    let wfStateCopy = {};
-                    Object.assign(wfStateCopy, wfState, {logs: LOG.logs});
-                    delete wfStateCopy.workflow;
-                    LOG.log(`LOG_WORKFLOW_STATE:${JSON.stringify(wfStateCopy)}`);
-                    resolve(wfState);
-                }).catch(nextStepRequestError => {
-                    LOG.err(nextStepRequestError);
-                    reject(nextStepRequestError);
-                });
-            }
         }).catch(err => {
             reject(err);
         });
