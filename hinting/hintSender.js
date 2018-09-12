@@ -2,7 +2,7 @@
 const util = require('./util');
 
 const sendReportToStateMonitor = (wfState, functionInstanceUuid, functionExecutionId, wasCold, security) => {
-    const hostname = "18.209.212.126"; // TODO declare cfc-stateMonitor endpoint in workflow.json
+    const hostname = "18.206.149.116"; // TODO declare cfc-stateMonitor endpoint in workflow.json
     const port = "8080";
     const path = "/stepExecution"; // TODO declare cfc-stateMonitor endpoint in workflow.json
     return new Promise((resolve, reject) => {

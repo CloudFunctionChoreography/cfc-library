@@ -105,13 +105,11 @@ const parseAndHint = (params, options, handler) => {
 
             /** Begin: Send Report **/
             let reportPromise = null;
-            if (wfState.optimizationMode === 5) {
+            if (wfState.sendReports === 1 || wfState.optimizationMode === 5) {
                 reportPromise = hinting.sendReportToCfcStateMonitor(wfState, functionExecutionId, security, functionInstanceUuid, coldExecution, LOG);
                 // TODO resolve
             }
             /** End: Send Report **/
-
-
 
             /**
              * Begin: Send hints when cold execution
