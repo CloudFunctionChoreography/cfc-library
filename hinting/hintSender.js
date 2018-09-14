@@ -1,37 +1,41 @@
 'use strict';
 const util = require('./util');
 
-const sendReportToStateMonitor = (wfState, functionInstanceUuid, functionExecutionId, wasCold, security) => {
+const sendReportToStateMonitor = (wfState, functionInstanceUuid, timeMetrics, functionExecutionId, wasCold, security) => {
     const hostname = "18.206.149.116"; // TODO declare cfc-stateMonitor endpoint in workflow.json
     const port = "8080";
     const path = "/stepExecution"; // TODO declare cfc-stateMonitor endpoint in workflow.json
     return new Promise((resolve, reject) => {
-        const postObject = {
+        let postObject = {
             workflowName: wfState.workflowName,
             stepName: wfState.currentStep,
             workflowExecutionUuid: wfState.executionUuid,
             stepExecutionUuid: functionExecutionId,
             instanceUuid: functionInstanceUuid,
-            receiveTime: 1351235, // TODO
-
+            coldExecution: wasCold
         };
 
-        if (wasCold) {
-            postObject.coldExecution = {
-                wasCold: wasCold,
-                initTime: 800 // TODO
-            }
+        let unknownProvider = false;
+        if (wfState.workflow.workflow[currentStep].provider === 'aws') {
+            postObject = Object.assign({timeMetrics: timeMetrics}, postObject)
+            // TODO
+        } else if (wfState.workflow.workflow[currentStep].provider === 'openWhisk') {
+            postObject = Object.assign({timeMetrics: timeMetrics}, postObject)
+            // TODO
         } else {
-            postObject.lastExecutionDuration = 510; // TODO
-            postObject.lastNetworkLatencyToNextStep = 200 // TODO
+            unknownProvider = true;
+            console.log("Unknown provider");
+            reject(`Unknown provider ${wfState.workflow.workflow[currentStep].provider}`)
         }
 
-        util.postCfcMonitor(hostname, path, port, security, postObject).then(postResult => {
-            resolve(postResult)
-        }).catch(postError => {
-            console.log(postError)
-            reject(postError)
-        })
+        if (!unknownProvider) {
+            util.postCfcMonitor(hostname, path, port, security, postObject).then(postResult => {
+                resolve(postResult)
+            }).catch(postError => {
+                console.log(postError)
+                reject(postError)
+            })
+        }
     });
 };
 

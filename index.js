@@ -6,6 +6,7 @@ const stepExecutor = require('./step-executor');
 const hinting = require('./hinting')
 const Logger = require('./logger');
 const uuidv1 = require('uuid/v1');
+const Time = require('./time');
 let functionInstanceUuid;
 let workflows;
 
@@ -75,6 +76,17 @@ const executeWorkflowStep = (options, handler, LOG, wfState) => {
 }
 
 const parseAndHint = (params, options, handler) => {
+    let timeMetrics = {
+        startTime: null
+    }
+    let getStartTime = Time.getTime().then(startTime => {
+        timeMetrics.startTime = startTime
+        return new Promise((resolve, reject) => {
+            resolve(startTime)
+        })
+    })
+
+
     /** If workflows haven't been read from file already, we do it here (this is only done in case of cold starts).
      Afterwards, the actual handler will be called. **/
     let {functionExecutionId, stateProperties, workflowsLocation, security} = options;
@@ -106,8 +118,25 @@ const parseAndHint = (params, options, handler) => {
             /** Begin: Send Report **/
             let reportPromise = null;
             if (wfState.sendReports === 1 || wfState.optimizationMode === 5) {
-                reportPromise = hinting.sendReportToCfcStateMonitor(wfState, functionExecutionId, security, functionInstanceUuid, coldExecution, LOG);
-                // TODO resolve
+                reportPromise = new Promise((resolve1, reject1) => {
+                    if (timeMetrics.startTime === null) {
+                        getStartTime.then(startTime => {
+                            timeMetrics.startTime = startTime;
+                            hinting.sendReportToCfcStateMonitor(wfState, functionExecutionId, timeMetrics, security, functionInstanceUuid, coldExecution, LOG)
+                                .then(value => resolve1(value))
+                                .catch(reason => {
+                                    reject1(reason)
+                                });
+                        }).catch(reason => reject1(reason))
+                    } else {
+                        hinting.sendReportToCfcStateMonitor(wfState, functionExecutionId, timeMetrics, security, functionInstanceUuid, coldExecution, LOG)
+                            .then(value => resolve1(value))
+                            .catch(reason => {
+                                reject1(reason)
+                            });
+                    }
+                })
+                // TODO resolve reportPromise
             }
             /** End: Send Report **/
 

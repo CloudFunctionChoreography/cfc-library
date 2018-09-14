@@ -3,10 +3,10 @@
 const hintReceiver = require('./hintReceiver');
 const hintSender = require('./hintSender');
 
-const sendReportToCfcStateMonitor = (wfState, functionExecutionId, security, functionInstanceUuid, wasCold, LOG) => {
+const sendReportToCfcStateMonitor = (wfState, functionExecutionId, timeMetrics, security, functionInstanceUuid, wasCold, LOG) => {
     return new Promise((resolve, reject) => {
         LOG.log(`User selected to use cfc-stateMonitor as hinting proxy --> sending report to cfc-stateMonitor`);
-        hintSender.sendReportToStateMonitor(wfState, functionInstanceUuid, functionExecutionId, wasCold, security).then(hintingResults => {
+        hintSender.sendReportToStateMonitor(wfState, functionInstanceUuid, timeMetrics, functionExecutionId, wasCold, security).then(hintingResults => {
             resolve(hintingResults)
         }).catch(hintingErrors => {
             reject(hintingErrors)
