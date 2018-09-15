@@ -3,7 +3,7 @@
 const parser = require('./parser');
 const state = require('./state');
 const stepExecutor = require('./step-executor');
-const hinting = require('./hinting')
+const hinting = require('./hinting');
 const Logger = require('./logger');
 const uuidv1 = require('uuid/v1');
 const Time = require('./time');
@@ -11,7 +11,7 @@ let functionInstanceUuid;
 let workflows;
 
 
-const handleCfc = (params, options, handler) => {
+const handleCfc = (params, options, context, handler) => {
     return new Promise((resolve, reject) => {
         // check if request was hint request
         if (params.hintMessage) { // request is hint
@@ -22,7 +22,7 @@ const handleCfc = (params, options, handler) => {
                 reject(hintError)
             });
         } else { // request was no hint: normal execution
-            parseAndHint(params, options, handler).then(response => {
+            parseAndExecute(params, options, context, handler).then(response => {
                 resolve(response)
             }).catch(error => {
                 reject(error)
@@ -35,7 +35,8 @@ const executeWorkflowStep = (options, handler, LOG, wfState) => {
 
     return new Promise((resolve, reject) => {
 
-        let {security} = options;
+        let {functionExecutionId, security} = options;
+
 
         // The handler can either return directly, or return a promise and resolve its result later
         let output = handler(wfState.getThisStepInput());
@@ -50,6 +51,7 @@ const executeWorkflowStep = (options, handler, LOG, wfState) => {
                     Object.assign(wfStateCopy, wfState, {logs: LOG.logs});
                     delete wfStateCopy.workflow;
                     LOG.log(`LOG_WORKFLOW_STATE:${JSON.stringify(wfStateCopy)}`);
+                    Time.setEndTime(functionExecutionId);
                     resolve(wfState);
                 }).catch(err => {
                     LOG.err(err);
@@ -66,6 +68,7 @@ const executeWorkflowStep = (options, handler, LOG, wfState) => {
                 Object.assign(wfStateCopy, wfState, {logs: LOG.logs});
                 delete wfStateCopy.workflow;
                 LOG.log(`LOG_WORKFLOW_STATE:${JSON.stringify(wfStateCopy)}`);
+                Time.setEndTime(functionExecutionId);
                 resolve(wfState);
             }).catch(nextStepRequestError => {
                 LOG.err(nextStepRequestError);
@@ -73,18 +76,34 @@ const executeWorkflowStep = (options, handler, LOG, wfState) => {
             });
         }
     })
-}
+};
 
-const parseAndHint = (params, options, handler) => {
+const parseAndExecute = (params, options, context, handler) => {
+    let start = new Date().getTime();
+    /**
+     * Start: Getting time metrics right at the start of the execution
+     */
     let timeMetrics = {
-        startTime: null
+        startTime: null,
+        endTime: Time.getEndTime()
+    };
+    Time.resetEndTime();
+    if (typeof context.getRemainingTimeInMillis === "function") { // context is from AWS Lambda
+        timeMetrics.remainingTimeAtStart = context.getRemainingTimeInMillis();
+        timeMetrics.executionTimeLimit = 30000; // TODO make it dynamic
     }
+    console.log(Time.getTime);
     let getStartTime = Time.getTime().then(startTime => {
-        timeMetrics.startTime = startTime
-        return new Promise((resolve, reject) => {
+        timeMetrics.startTime = startTime;
+        console.log("index1", timeMetrics);
+
+        return new Promise((resolve) => {
             resolve(startTime)
         })
-    })
+    });
+    /**
+     * End: Getting time metrics right at the start of the execution
+     */
 
 
     /** If workflows haven't been read from file already, we do it here (this is only done in case of cold starts).
@@ -116,9 +135,9 @@ const parseAndHint = (params, options, handler) => {
             }, stateProperties), LOG);
 
             /** Begin: Send Report **/
-            let reportPromise = null;
+            let reportAndHintingPromise = [];
             if (wfState.sendReports === 1 || wfState.optimizationMode === 5) {
-                reportPromise = new Promise((resolve1, reject1) => {
+                let reportPromise = new Promise((resolve1, reject1) => {
                     if (timeMetrics.startTime === null) {
                         getStartTime.then(startTime => {
                             timeMetrics.startTime = startTime;
@@ -135,18 +154,25 @@ const parseAndHint = (params, options, handler) => {
                                 reject1(reason)
                             });
                     }
-                })
-                // TODO resolve reportPromise
+                });
+                reportAndHintingPromise.push(reportPromise);
             }
             /** End: Send Report **/
 
             /**
              * Begin: Send hints when cold execution
              */
-            let hintingPromise;
-            if (coldExecution) {
-                hintingPromise = hinting.sendHints(wfState, functionExecutionId, security, functionInstanceUuid, LOG);
-                hintingPromise.then(hintingResult => {
+            if (coldExecution) { // cold execution: send hints
+                reportAndHintingPromise.push(hinting.sendHints(wfState, functionExecutionId, security, functionInstanceUuid, LOG));
+            }
+            /**
+             * END: Sending hints when cold execution
+             */
+
+            if (reportAndHintingPromise.length > 0) {
+                Promise.all(reportAndHintingPromise).then(reportAndHintingResult => {
+                    console.log(`InitLatency: ${new Date().getTime() - start}`)
+                    console.log(reportAndHintingResult);
                     executeWorkflowStep(options, handler, LOG, wfState).then(result => {
                         resolve(result)
                     }).catch(err => {
@@ -155,18 +181,14 @@ const parseAndHint = (params, options, handler) => {
                 }).catch(err => {
                     LOG.err(err);
                 });
-            } else {
+            } else { // warm execution: just execute workflow step function
+                console.log(`InitLatency: ${new Date().getTime() - start}`)
                 executeWorkflowStep(options, handler, LOG, wfState).then(result => {
                     resolve(result)
                 }).catch(err => {
                     reject(err)
                 })
             }
-            /**
-             * END: Sending hints when cold execution
-             */
-
-
         }).catch(err => {
             reject(err);
         });

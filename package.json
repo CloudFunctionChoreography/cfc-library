@@ -24,6 +24,9 @@
   ],
   "author": "Simon Buchholz",
   "license": "MIT",
+  "engines": {
+    "node": ">=4.0.0"
+  },
   "dependencies": {
     "aws-sdk": "^2.275.1",
     "uuid": "^3.3.2",

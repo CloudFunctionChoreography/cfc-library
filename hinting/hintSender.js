@@ -2,7 +2,7 @@
 const util = require('./util');
 
 const sendReportToStateMonitor = (wfState, functionInstanceUuid, timeMetrics, functionExecutionId, wasCold, security) => {
-    const hostname = "18.206.149.116"; // TODO declare cfc-stateMonitor endpoint in workflow.json
+    const hostname = "54.236.240.160"; // TODO declare cfc-stateMonitor endpoint in workflow.json
     const port = "8080";
     const path = "/stepExecution"; // TODO declare cfc-stateMonitor endpoint in workflow.json
     return new Promise((resolve, reject) => {
@@ -16,23 +16,22 @@ const sendReportToStateMonitor = (wfState, functionInstanceUuid, timeMetrics, fu
         };
 
         let unknownProvider = false;
-        if (wfState.workflow.workflow[currentStep].provider === 'aws') {
+        if (wfState.workflow.workflow[wfState.currentStep].provider === 'aws') {
             postObject = Object.assign({timeMetrics: timeMetrics}, postObject)
             // TODO
-        } else if (wfState.workflow.workflow[currentStep].provider === 'openWhisk') {
+        } else if (wfState.workflow.workflow[wfState.currentStep].provider === 'openWhisk') {
             postObject = Object.assign({timeMetrics: timeMetrics}, postObject)
             // TODO
         } else {
             unknownProvider = true;
             console.log("Unknown provider");
-            reject(`Unknown provider ${wfState.workflow.workflow[currentStep].provider}`)
+            reject(`Unknown provider ${wfState.workflow.workflow[wfState.currentStep].provider}`)
         }
 
         if (!unknownProvider) {
-            util.postCfcMonitor(hostname, path, port, security, postObject).then(postResult => {
+            util.postCfcMonitor(hostname, path, port, security, postObject, false).then(postResult => {
                 resolve(postResult)
             }).catch(postError => {
-                console.log(postError)
                 reject(postError)
             })
         }
@@ -41,6 +40,7 @@ const sendReportToStateMonitor = (wfState, functionInstanceUuid, timeMetrics, fu
 
 const sendHintsHeuristicProviderSeperation = (wfState, functionInstanceUuid, functionExecutionId, security) => {
     return new Promise((resolve, reject) => {
+        const blockTime = wfState.currentStep === wfState.workflow.startAt ? 700 : 0; // TODO this should depend on whether the second step is AWS or OpenWhisk and if step1 is the same or the other one respectively
         let promises = [];
         const steps = wfState.workflow.workflow;
         const currentStep = wfState.workflow.workflow[wfState.currentStep];
@@ -65,9 +65,9 @@ const sendHintsHeuristicProviderSeperation = (wfState, functionInstanceUuid, fun
 
             if (steps[stepName].provider === currentProvider && wfState.currentStep === wfState.workflow.startAt && stepName !== wfState.workflow.startAt) { // Send hints to functions which belong to own provider
                 if (steps[stepName].provider === "openWhisk") {
-                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
+                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, false, blockTime))
                 } else if (steps[stepName].provider === "aws") {
-                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
+                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, false, blockTime))
                 }
             } else if (steps[stepName].provider !== currentProvider && wfState.currentStep === wfState.workflow.startAt && stepName !== wfState.workflow.startAt) { // Send special hint to proxy
                 stepsOfOtherProvider.push(Object.assign({stepName: stepName}, steps[stepName]));
@@ -94,9 +94,9 @@ const sendHintsHeuristicProviderSeperation = (wfState, functionInstanceUuid, fun
                 }
             };
             if (stepsOfOtherProvider[randomIndex].provider === "openWhisk") {
-                promises.push(util.hintOpenWhisk(stepsOfOtherProvider[randomIndex].functionEndpoint.hostname, stepsOfOtherProvider[randomIndex].functionEndpoint.path, security, postObject))
+                promises.push(util.hintOpenWhisk(stepsOfOtherProvider[randomIndex].functionEndpoint.hostname, stepsOfOtherProvider[randomIndex].functionEndpoint.path, security, postObject, false, blockTime))
             } else if (stepsOfOtherProvider[randomIndex].provider === "aws") {
-                promises.push(util.hintLambda(stepsOfOtherProvider[randomIndex].functionEndpoint.hostname, stepsOfOtherProvider[randomIndex].functionEndpoint.path, security, postObject))
+                promises.push(util.hintLambda(stepsOfOtherProvider[randomIndex].functionEndpoint.hostname, stepsOfOtherProvider[randomIndex].functionEndpoint.path, security, postObject, false, blockTime))
             }
         }
         /** End: Sending special proxy-hint to one random function of the other provider **/
@@ -105,13 +105,7 @@ const sendHintsHeuristicProviderSeperation = (wfState, functionInstanceUuid, fun
             resolve(hintingResults)
         }).catch(hintingErrors => {
             reject(hintingErrors)
-        })
-
-        // TODO this should depend on whether the second step is AWS or OpenWhisk and if step1 is the same or the other one respectively
-        const blockTime = wfState.currentStep === wfState.workflow.startAt ? 700 : 0;
-        setTimeout(() => {
-            resolve("Sending heuristic hints")
-        }, blockTime)
+        });
     })
 };
 
@@ -135,26 +129,21 @@ const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, 
                 }
             };
 
+            const blockTime = wfState.currentStep === wfState.workflow.startAt ? 700 : 0;        // TODO this should depend on whether the second step is AWS or OpenWhisk and if step1 is the same or the other one respectively
             if (wfState.currentStep === wfState.workflow.startAt && stepName !== wfState.workflow.startAt) { // Send hints to functions which belong to own provider
                 if (steps[stepName].provider === "openWhisk") {
-                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
+                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, false, blockTime))
                 } else if (steps[stepName].provider === "aws") {
-                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
+                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, false, blockTime))
                 }
             }
         }
 
-        /* Promise.all(promises).then(hintingResults => {
+        Promise.all(promises).then(hintingResults => {
             resolve(hintingResults)
         }).catch(hintingErrors => {
             reject(hintingErrors)
-        }) */
-
-        // TODO this should depend on whether the second step is AWS or OpenWhisk and if step1 is the same or the other one respectively
-        const blockTime = wfState.currentStep === wfState.workflow.startAt ? 700 : 0;
-        setTimeout(() => {
-            resolve("Sending heuristic hints")
-        }, blockTime)
+        });
     })
 };
 
@@ -176,7 +165,7 @@ const sendHintsNaive = (wfState, functionInstanceUuid, functionExecutionId, secu
                         stepName: stepName
                     }
                 };
-                promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
+                promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, false, 0))
             } else if (steps[stepName].provider === "aws" && wfState.workflow.startAt !== stepName) {
                 let postObject = {
                     hintMessage: {
@@ -190,17 +179,15 @@ const sendHintsNaive = (wfState, functionInstanceUuid, functionExecutionId, secu
                         stepName: stepName
                     }
                 };
-                promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject))
+                promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, false, 0))
             }
         }
 
-        /* Promise.all(promises).then(hintingResults => {
-            resolve(hintingResults)
+        Promise.all(promises).then(hintingResults => {
+            resolve("Sending naive hints")
         }).catch(hintingErrors => {
             reject(hintingErrors)
-        }) */
-
-        resolve("Sending naive hints")
+        })
     })
 };
 

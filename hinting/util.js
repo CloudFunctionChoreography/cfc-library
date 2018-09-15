@@ -3,8 +3,10 @@
 const https = require('https');
 const http = require('http');
 
-const postCfcMonitor = (hostname, path, port, security, postObject) => {
+const postCfcMonitor = (hostname, path, port, security, postObject, blocking) => {
     return new Promise((resolve, reject) => {
+        if (!blocking) resolve(`Sending report to cfc-stateMonitor ${hostname}${path}.`)
+        let start = new Date().getTime();
         const postData = JSON.stringify(postObject);
         const options = {
             hostname: hostname,
@@ -23,13 +25,13 @@ const postCfcMonitor = (hostname, path, port, security, postObject) => {
             res.setEncoding('utf8');
             res.resume();
             res.on('end', () => {
-                resolve(`Report was sent to cfc-stateMonitor ${hostname}${path}`);
+                if (blocking) resolve(`Report was sent to cfc-stateMonitor ${hostname}${path}. Report latency ${new Date().getTime() - start}ms`);
             });
         });
 
         req.on('error', (err) => {
             console.log(`Report was sent to cfc-stateMonitor ${hostname}${path} BUT error: ${err.message}`);
-            reject(err.message);
+            if (blocking) reject(err.message);
         });
 
         // write data to request body
@@ -38,8 +40,11 @@ const postCfcMonitor = (hostname, path, port, security, postObject) => {
     });
 };
 
-const hintLambda = (hostname, path, security, postObject, blocking = false) => {
+const hintLambda = (hostname, path, security, postObject, blocking = false, blockTime = 0) => {
     return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (!blocking) resolve(`Sending hint to Lambda function ${hostname}${path}.`);
+        }, blockTime);
 
         let invocationType = "Event";
         if (blocking) invocationType = "RequestResponse";
@@ -64,14 +69,14 @@ const hintLambda = (hostname, path, security, postObject, blocking = false) => {
             res.setEncoding('utf8');
             res.resume();
             res.on('end', () => {
-                // console.log(`Lambda function was hinted ${hostname}${path}`);
-                resolve(`Lambda function was hinted ${hostname}${path}`);
+                console.log(`Lambda function was hinted ${hostname}${path}`);
+                if (blocking) resolve(`Lambda function was hinted ${hostname}${path}`);
             });
         });
 
         req.on('error', (err) => {
             console.log(`Lambda function was hinted BUT error: ${err.message}`);
-            reject(err.message);
+            if (blocking) reject(err.message);
         });
 
         // write data to request body
@@ -81,8 +86,12 @@ const hintLambda = (hostname, path, security, postObject, blocking = false) => {
 };
 
 
-const hintOpenWhisk = (hostname, path, security, postObject, blocking = false) => {
+const hintOpenWhisk = (hostname, path, security, postObject, blocking = false, blockTime = 0) => {
     return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (!blocking) resolve(`Sending hint to OpenWhisk function ${hostname}${path}.`);
+        }, blockTime);
+
         let blockingPath = "?blocking=false"
         if (blocking) blockingPath = "?blocking=true"
 
@@ -103,14 +112,14 @@ const hintOpenWhisk = (hostname, path, security, postObject, blocking = false) =
             res.setEncoding('utf8');
             res.resume();
             res.on('end', () => {
-                // console.log(`OpenWhisk function was hinted ${hostname}${path}`);
-                resolve(`OpenWhisk function was hinted ${hostname}${path}`);
+                console.log(`OpenWhisk function was hinted ${hostname}${path}`);
+                if (blocking) resolve(`OpenWhisk function was hinted ${hostname}${path}`);
             });
         });
 
         req.on('error', (err) => {
             console.log(`OpenWhisk function was hinted BUT error: ${err.message}`);
-            reject(err);
+            if (blocking) reject(err);
         });
 
         // write data to request body

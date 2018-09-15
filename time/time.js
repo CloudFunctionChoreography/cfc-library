@@ -1,41 +1,65 @@
 'use strict';
 
 const Sntp = require('sntp');
+let offset = null;
+let endTime = null;
 
-class Time {
-    static offset = null;
-
-    static synchronizeTime() {
-        return new Promise((resolve, reject) => {
-            Sntp.offset((err, offset) => {
-                if (err) {
-                    reject(err)
-                } else {
-                    Time.offset = offset;
-                    resolve(offset)
-                }
-            });
-        })
+const setEndTime = (functionExecutionId) => {
+    if (offset === null) {
+        endTime = null;
+        return null
+    } else {
+        endTime = {
+            functionExecutionId: functionExecutionId,
+            endTime: new Date().getTime() + offset
+        };
+        return endTime
     }
+};
 
-    /**
-     * Returns a promise which resolves a
-     * timestamp recorded at the beginning of the method invocation and corrected by the NTP offset
-     * @returns {Promise<any>}
-     */
-    static getTime() {
-        let currentSystemTime = new Date().getTime();
-        return new Promise((resolve, reject) => {
-            if (this.offset === null) {
-                Time.synchronizeTime().then(offset => {
-                    resolve(offset + currentSystemTime)
-                }).catch(reason => reject(reason))
+const getEndTime = () => {
+   return endTime
+};
+
+const resetEndTime = () => {
+    endTime = null;
+};
+
+const synchronizeTime = () => {
+    return new Promise((resolve, reject) => {
+        Sntp.offset((err, offsetResult) => {
+            if (err) {
+                console.error(err)
+                reject(err)
             } else {
-                resolve(this.offset + currentSystemTime)
+                console.log(offsetResult)
+                offset = offsetResult;
+                resolve(offset)
             }
-        })
-    }
+        });
+    })
+};
 
-}
+/**
+ * Returns a promise which resolves a
+ * timestamp recorded at the beginning of the method invocation and corrected by the NTP offset
+ * @returns {Promise<any>}
+ */
+const getTime = () => {
+    let currentSystemTime = new Date().getTime();
+    return new Promise((resolve, reject) => {
+        console.log("time1", currentSystemTime)
+        if (offset === null) {
+            synchronizeTime().then(offset => {
+                resolve(offset + currentSystemTime)
+            }).catch(reason => reject(reason))
+        } else {
+            resolve(offset + currentSystemTime)
+        }
+    })
+};
 
-module.exports = Time;
+module.exports.getTime = getTime;
+module.exports.setEndTime = setEndTime;
+module.exports.getEndTime = getEndTime;
+module.exports.resetEndTime = resetEndTime;

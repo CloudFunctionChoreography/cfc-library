@@ -2,4 +2,7 @@
 
 const Time = require('./time');
 
-exports.Time = Time;
+exports.getTime = Time.getTime;
+exports.setEndTime = Time.setEndTime;
+exports.getEndTime = Time.getEndTime;
+exports.resetEndTime = Time.resetEndTime;
