@@ -2,7 +2,7 @@
 const util = require('./util');
 
 const sendReportToStateMonitor = (wfState, functionInstanceUuid, timeMetrics, functionExecutionId, wasCold, security) => {
-    const hostname = "54.236.240.160"; // TODO declare cfc-stateMonitor endpoint in workflow.json
+    const hostname = "18.207.103.157"; // TODO declare cfc-stateMonitor endpoint in workflow.json
     const port = "8080";
     const path = "/stepExecution"; // TODO declare cfc-stateMonitor endpoint in workflow.json
     return new Promise((resolve, reject) => {
@@ -16,12 +16,8 @@ const sendReportToStateMonitor = (wfState, functionInstanceUuid, timeMetrics, fu
         };
 
         let unknownProvider = false;
-        if (wfState.workflow.workflow[wfState.currentStep].provider === 'aws') {
+        if (wfState.workflow.workflow[wfState.currentStep].provider === 'aws' || wfState.workflow.workflow[wfState.currentStep].provider === 'openWhisk') {
             postObject = Object.assign({timeMetrics: timeMetrics}, postObject)
-            // TODO
-        } else if (wfState.workflow.workflow[wfState.currentStep].provider === 'openWhisk') {
-            postObject = Object.assign({timeMetrics: timeMetrics}, postObject)
-            // TODO
         } else {
             unknownProvider = true;
             console.log("Unknown provider");
