@@ -2,7 +2,7 @@
 const util = require('./util');
 
 const sendReportToStateMonitor = (wfState, functionInstanceUuid, timeMetrics, functionExecutionId, wasCold, security) => {
-    const hostname = "18.207.103.157"; // TODO declare cfc-stateMonitor endpoint in workflow.json
+    const hostname = "184.72.150.121"; // TODO declare cfc-stateMonitor endpoint in workflow.json
     const port = "8080";
     const path = "/stepExecution"; // TODO declare cfc-stateMonitor endpoint in workflow.json
     return new Promise((resolve, reject) => {
@@ -12,7 +12,8 @@ const sendReportToStateMonitor = (wfState, functionInstanceUuid, timeMetrics, fu
             workflowExecutionUuid: wfState.executionUuid,
             stepExecutionUuid: functionExecutionId,
             instanceUuid: functionInstanceUuid,
-            coldExecution: wasCold
+            coldExecution: wasCold,
+            optimizationMode: wfState.optimizationMode
         };
 
         let unknownProvider = false;
