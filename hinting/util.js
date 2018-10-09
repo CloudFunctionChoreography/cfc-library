@@ -5,7 +5,7 @@ const http = require('http');
 
 const postCfcMonitor = (hostname, path, port, security, postObject, blocking) => {
     return new Promise((resolve, reject) => {
-        if (!blocking) resolve(`Sending report to cfc-stateMonitor ${hostname}${path}.`)
+        if (!blocking) resolve(`Sending report to cfc-stateMonitor ${hostname}${path}.`);
         let start = new Date().getTime();
         const postData = JSON.stringify(postObject);
         const options = {

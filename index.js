@@ -171,8 +171,8 @@ const parseAndExecute = (params, options, context, handler) => {
 
             if (reportAndHintingPromise.length > 0) {
                 Promise.all(reportAndHintingPromise).then(reportAndHintingResult => {
-                    console.log(`InitLatency: ${new Date().getTime() - start}`)
-                    console.log(reportAndHintingResult);
+                    // console.log(`InitLatency: ${new Date().getTime() - start}`)
+                    // console.log(reportAndHintingResult);
                     executeWorkflowStep(options, handler, LOG, wfState).then(result => {
                         resolve(result)
                     }).catch(err => {
@@ -181,8 +181,8 @@ const parseAndExecute = (params, options, context, handler) => {
                 }).catch(err => {
                     LOG.err(err);
                 });
-            } else { // warm execution: just execute workflow step function
-                console.log(`InitLatency: ${new Date().getTime() - start}`)
+            } else { // warm execution and no reporting: just execute workflow step function
+                // console.log(`InitLatency: ${new Date().getTime() - start}`)
                 executeWorkflowStep(options, handler, LOG, wfState).then(result => {
                     resolve(result)
                 }).catch(err => {

@@ -38,7 +38,7 @@ const sendHints = (wfState, functionExecutionId, security, functionInstanceUuid,
                 reject(hintingErrors)
             });
         } else if (wfState.optimizationMode === 3) { // Heuristic
-            LOG.log(`User selected heuristic-based optimization approach --> sending hints to ${wfState.workflow.workflow[wfState.currentStep].provider} functions and alert function of other provider to send hints`);
+            LOG.log(`User selected heuristic-based optimization approach --> sending hints`);
             hintSender.sendHintsHeuristic(wfState, functionInstanceUuid, functionExecutionId, security).then(hintingResults => {
                 resolve(hintingResults)
             }).catch(hintingErrors => {
@@ -51,6 +51,9 @@ const sendHints = (wfState, functionExecutionId, security, functionInstanceUuid,
             }).catch(hintingErrors => {
                 reject(hintingErrors)
             });
+        }  else if (wfState.optimizationMode === 5) { // Holistic
+            LOG.log(`User selected holistic-based optimization approach`);
+            resolve("User selected holistic-based mechanism --> Report sent to stateMonitor")
         } else {
             resolve("User selected no optimization mechanism --> No hints send")
         }
