@@ -169,26 +169,16 @@ const parseAndExecute = (params, options, context, handler) => {
              * END: Sending hints when cold execution
              */
 
-            if (reportAndHintingPromise.length > 0) {
-                Promise.all(reportAndHintingPromise).then(reportAndHintingResult => {
-                    // console.log(`InitLatency: ${new Date().getTime() - start}`)
-                    // console.log(reportAndHintingResult);
-                    executeWorkflowStep(options, handler, LOG, wfState).then(result => {
-                        resolve(result)
-                    }).catch(err => {
-                        reject(err)
-                    })
-                }).catch(err => {
-                    LOG.err(err);
-                });
-            } else { // warm execution and no reporting: just execute workflow step function
+            // the order of the promise all results is same as order of the promises, regardless of what resolves first
+            const workflowResultIndex = reportAndHintingPromise.push(executeWorkflowStep(options, handler, LOG, wfState)) - 1;
+            Promise.all(reportAndHintingPromise).then(result => {
                 // console.log(`InitLatency: ${new Date().getTime() - start}`)
-                executeWorkflowStep(options, handler, LOG, wfState).then(result => {
-                    resolve(result)
-                }).catch(err => {
-                    reject(err)
-                })
-            }
+                // console.log(reportAndHintingResult);
+                resolve(result[workflowResultIndex]);
+            }).catch(err => {
+                LOG.err(err);
+                reject(err)
+            });
         }).catch(err => {
             reject(err);
         });

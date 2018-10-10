@@ -92,8 +92,8 @@ const hintOpenWhisk = (hostname, path, security, postObject, blocking = false, b
             if (!blocking) resolve(`Sending hint to OpenWhisk function ${hostname}${path}.`);
         }, blockTime);
 
-        let blockingPath = "?blocking=false"
-        if (blocking) blockingPath = "?blocking=true"
+        let blockingPath = "?blocking=false";
+        if (blocking) blockingPath = "?blocking=true";
 
         const postData = JSON.stringify(postObject);
         const auth = 'Basic ' + Buffer.from(security.openWhisk.owApiAuthKey + ':' + security.openWhisk.owApiAuthPassword).toString('base64');
