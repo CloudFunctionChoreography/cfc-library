@@ -40,10 +40,14 @@ const postCfcMonitor = (hostname, path, port, security, postObject, blocking) =>
     });
 };
 
-const hintLambda = (hostname, path, security, postObject, blocking = false, blockTime = 0) => {
+const hintLambda = (hostname, path, security, postObject, blocking = false, blockTime = 0, connectTime = false) => {
     return new Promise((resolve, reject) => {
+        let now = new Date().getTime();
+        let timings = {dnsLookupAt: -1, tcpConnectionAt: -1, tlsHandshakeAt: -1};
+
+
         setTimeout(() => {
-            if (!blocking) resolve(`Sending hint to Lambda function ${hostname}${path}.`);
+            if (!blocking && !connectTime) resolve(`Sending hint to Lambda function ${hostname}${path}.`);
         }, blockTime);
 
         let invocationType = "Event";
@@ -67,16 +71,35 @@ const hintLambda = (hostname, path, security, postObject, blocking = false, bloc
 
         let req = https.request(options, (res) => {
             res.setEncoding('utf8');
-            res.resume();
+            let result = "";
+            res.on('data', chunk => {
+                result = result + chunk;
+            });
             res.on('end', () => {
                 console.log(`Lambda function was hinted ${hostname}${path}`);
-                if (blocking) resolve(`Lambda function was hinted ${hostname}${path}`);
+                if (blocking || connectTime) resolve({
+                    message: `Lambda function was hinted ${hostname}${path}`,
+                    response: JSON.parse(JSON.parse(result).body).handlerResult,
+                    connectTime: Math.max(timings.dnsLookupAt, timings.tcpConnectionAt, timings.tlsHandshakeAt)
+                });
+            });
+        });
+
+        req.on('socket', socket => {
+            socket.on('lookup', () => {
+                timings.dnsLookupAt = new Date().getTime() - now;
+            });
+            socket.on('connect', () => {
+                timings.tcpConnectionAt = new Date().getTime() - now;
+            });
+            socket.on('secureConnect', () => {
+                timings.tlsHandshakeAt = new Date().getTime() - now;
             });
         });
 
         req.on('error', (err) => {
             console.log(`Lambda function was hinted BUT error: ${err.message}`);
-            if (blocking) reject(err.message);
+            if (blocking || connectTime) reject(err.message);
         });
 
         // write data to request body
@@ -86,10 +109,13 @@ const hintLambda = (hostname, path, security, postObject, blocking = false, bloc
 };
 
 
-const hintOpenWhisk = (hostname, path, security, postObject, blocking = false, blockTime = 0) => {
+const hintOpenWhisk = (hostname, path, security, postObject, blocking = false, blockTime = 0, connectTime = false) => {
     return new Promise((resolve, reject) => {
+        let now = new Date().getTime();
+        let timings = {dnsLookupAt: -1, tcpConnectionAt: -1, tlsHandshakeAt: -1};
+
         setTimeout(() => {
-            if (!blocking) resolve(`Sending hint to OpenWhisk function ${hostname}${path}.`);
+            if (!blocking && !connectTime) resolve(`Sending hint to OpenWhisk function ${hostname}${path}.`);
         }, blockTime);
 
         let blockingPath = "?blocking=false";
@@ -110,16 +136,35 @@ const hintOpenWhisk = (hostname, path, security, postObject, blocking = false, b
 
         let req = https.request(options, (res) => {
             res.setEncoding('utf8');
-            res.resume();
+            let result = "";
+            res.on('data', chunk => {
+                result = result + chunk;
+            });
             res.on('end', () => {
                 console.log(`OpenWhisk function was hinted ${hostname}${path}`);
-                if (blocking) resolve(`OpenWhisk function was hinted ${hostname}${path}`);
+                if (blocking || connectTime) resolve({
+                    message: `OpenWhisk function was hinted ${hostname}${path}`,
+                    response: JSON.parse(result).response.result,
+                    connectTime: Math.max(timings.dnsLookupAt, timings.tcpConnectionAt, timings.tlsHandshakeAt)
+                });
+            });
+        });
+
+        req.on('socket', socket => {
+            socket.on('lookup', () => {
+                timings.dnsLookupAt = new Date().getTime() - now;
+            });
+            socket.on('connect', () => {
+                timings.tcpConnectionAt = new Date().getTime() - now;
+            });
+            socket.on('secureConnect', () => {
+                timings.tlsHandshakeAt = new Date().getTime() - now;
             });
         });
 
         req.on('error', (err) => {
             console.log(`OpenWhisk function was hinted BUT error: ${err.message}`);
-            if (blocking) reject(err);
+            if (blocking || connectTime) reject(err);
         });
 
         // write data to request body

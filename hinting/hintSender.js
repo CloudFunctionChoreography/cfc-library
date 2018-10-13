@@ -126,12 +126,15 @@ const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, 
                 }
             };
 
-            const blockTime = wfState.currentStep === wfState.workflow.startAt ? 700 : 0;        // TODO this should depend on whether the second step is AWS or OpenWhisk and if step1 is the same or the other one respectively
+            const blockTime = 0;
+            // the first function in the workflow is waiting for the hint to return. The subsequent functions are not waiting
+            let blocking = (wfState.currentStep === wfState.workflow.startAt) ? true : false;
+
             if (wfState.currentStep === wfState.workflow.startAt && stepName !== wfState.workflow.startAt) { // Send hints to functions which belong to own provider
                 if (steps[stepName].provider === "openWhisk") {
-                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, false, blockTime))
+                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, blocking, blockTime))
                 } else if (steps[stepName].provider === "aws") {
-                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, false, blockTime))
+                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, blocking, blockTime))
                 }
             }
         }

@@ -79,12 +79,13 @@ const handleModeHeuristic = (options, functionInstanceUuid, hintMessage, params)
 
 const sendRecursiveHeuristicHint = (workflow, hintMessage, security, functionExecutionId, functionInstanceUuid) => {
     return new Promise((resolve, reject) => {
+        const MAX_RECURSIVE_HINTS = 3;
         const currentStep = hintMessage.stepName;
         const steps = workflow.workflow;
         let hintCounter = hintMessage.recursiveHintCounter;
         if (!hintCounter) hintCounter = 0;
 
-        if (hintCounter < 3) {
+        if (hintCounter < MAX_RECURSIVE_HINTS) {
             let postObject = {
                 hintMessage: {
                     triggeredFrom: {
@@ -103,13 +104,15 @@ const sendRecursiveHeuristicHint = (workflow, hintMessage, security, functionExe
 
             let promise;
             if (steps[currentStep].provider === "openWhisk") {
-                promise = util.hintOpenWhisk(steps[currentStep].functionEndpoint.hostname, steps[currentStep].functionEndpoint.path, security, postObject, false)
+                promise = util.hintOpenWhisk(steps[currentStep].functionEndpoint.hostname, steps[currentStep].functionEndpoint.path, security, postObject, false, 0, true)
             } else if (steps[currentStep].provider === "aws") {
-                promise = util.hintLambda(steps[currentStep].functionEndpoint.hostname, steps[currentStep].functionEndpoint.path, security, postObject, false)
+                promise = util.hintLambda(steps[currentStep].functionEndpoint.hostname, steps[currentStep].functionEndpoint.path, security, postObject, false, 0, true)
             }
 
             promise.then(recursiveHintResult => {
-                setTimeout(() => {resolve(recursiveHintResult)}, 150)
+                setTimeout(() => {
+                    resolve(recursiveHintResult)
+                }, ((MAX_RECURSIVE_HINTS - hintCounter) * recursiveHintResult.connectTime)) // important blocking
             }).catch(recursiveHintError => {
                 reject(recursiveHintError)
             })
