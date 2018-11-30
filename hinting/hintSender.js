@@ -26,7 +26,7 @@ const sendReportToStateMonitor = (wfState, functionInstanceUuid, timeMetrics, fu
         }
 
         if (!unknownProvider) {
-            util.postCfcMonitor(hostname, path, port, security, postObject, false).then(postResult => {
+            util.postCfcMonitor(hostname, path, port, security, postObject).then(postResult => {
                 resolve(postResult)
             }).catch(postError => {
                 reject(postError)

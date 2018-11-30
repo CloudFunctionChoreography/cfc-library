@@ -3,10 +3,10 @@
 const https = require('https');
 const http = require('http');
 
-const postCfcMonitor = (hostname, path, port, security, postObject, blocking) => {
+const postCfcMonitor = (hostname, path, port, security, postObject) => {
     return new Promise((resolve, reject) => {
-        if (!blocking) resolve(`Sending report to cfc-stateMonitor ${hostname}${path}.`);
         let start = new Date().getTime();
+
         const postData = JSON.stringify(postObject);
         const options = {
             hostname: hostname,
@@ -25,13 +25,14 @@ const postCfcMonitor = (hostname, path, port, security, postObject, blocking) =>
             res.setEncoding('utf8');
             res.resume();
             res.on('end', () => {
-                if (blocking) resolve(`Report was sent to cfc-stateMonitor ${hostname}${path}. Report latency ${new Date().getTime() - start}ms`);
+                console.log("Report latency: " + new Date().getTime() - start);
+                resolve(`Report was sent to cfc-stateMonitor ${hostname}${path}. Report latency ${new Date().getTime() - start}ms`);
             });
         });
 
         req.on('error', (err) => {
             console.log(`Report was sent to cfc-stateMonitor ${hostname}${path} BUT error: ${err.message}`);
-            if (blocking) reject(err.message);
+            reject(err.message);
         });
 
         // write data to request body

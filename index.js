@@ -134,6 +134,7 @@ const parseAndExecute = (params, options, context, handler) => {
 
             /** Begin: Send Report **/
             let reportAndHintingPromise = [];
+            let reportResultIndex = -1;
             if (wfState.sendReports === 1 || wfState.optimizationMode === 5) {
                 let reportPromise = new Promise((resolve1, reject1) => {
                     if (timeMetrics.startTime === null) {
@@ -153,7 +154,7 @@ const parseAndExecute = (params, options, context, handler) => {
                             });
                     }
                 });
-                reportAndHintingPromise.push(reportPromise);
+                reportResultIndex = reportAndHintingPromise.push(reportPromise) - 1;
             }
             /** End: Send Report **/
 
@@ -172,6 +173,7 @@ const parseAndExecute = (params, options, context, handler) => {
             Promise.all(reportAndHintingPromise).then(result => {
                 // console.log(`InitLatency: ${new Date().getTime() - start}`)
                 // console.log(reportAndHintingResult);
+                if (reportResultIndex !== -1) LOG.log(result[reportResultIndex]);
                 resolve(result[workflowResultIndex]);
             }).catch(err => {
                 LOG.err(err);
