@@ -2,9 +2,9 @@
 const util = require('./util');
 
 const sendReportToStateMonitor = (wfState, functionInstanceUuid, timeMetrics, functionExecutionId, wasCold, security) => {
-    const hostname = "184.72.150.121"; // TODO declare cfc-stateMonitor endpoint in workflow.json
+    const hostname = wfState.stateMonitorIp;
     const port = "8080";
-    const path = "/stepExecution"; // TODO declare cfc-stateMonitor endpoint in workflow.json
+    const path = "/stepExecution"; // TODO declare cfc-stateMonitor endpoint and port in workflow.json or initial state
     return new Promise((resolve, reject) => {
         let postObject = {
             workflowName: wfState.workflowName,
@@ -110,6 +110,7 @@ const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, 
     return new Promise((resolve, reject) => {
         let promises = [];
         const steps = wfState.workflow.workflow;
+        let blocking = (wfState.currentStep === wfState.workflow.startAt) ? true : false;
         for (let stepName in wfState.workflow.workflow) {
             let postObject = {
                 hintMessage: {
@@ -128,13 +129,14 @@ const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, 
 
             const blockTime = 0;
             // the first function in the workflow is waiting for the hint to return. The subsequent functions are not waiting
-            let blocking = (wfState.currentStep === wfState.workflow.startAt) ? true : false;
 
-            if (wfState.currentStep === wfState.workflow.startAt && stepName !== wfState.workflow.startAt) { // Send hints to functions which belong to own provider
+            if (wfState.currentStep === wfState.workflow.startAt && stepName !== wfState.workflow.startAt) {
                 if (steps[stepName].provider === "openWhisk") {
-                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, blocking, blockTime))
+                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, blocking, blockTime));
+                    blocking = false;
                 } else if (steps[stepName].provider === "aws") {
-                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, blocking, blockTime))
+                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, blocking, blockTime));
+                    blocking = false;
                 }
             }
         }

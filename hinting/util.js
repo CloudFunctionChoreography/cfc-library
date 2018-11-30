@@ -77,11 +77,18 @@ const hintLambda = (hostname, path, security, postObject, blocking = false, bloc
             });
             res.on('end', () => {
                 console.log(`Lambda function was hinted ${hostname}${path}`);
-                if (blocking || connectTime) resolve({
-                    message: `Lambda function was hinted ${hostname}${path}`,
-                    response: JSON.parse(JSON.parse(result).body).handlerResult,
-                    connectTime: Math.max(timings.dnsLookupAt, timings.tcpConnectionAt, timings.tlsHandshakeAt)
-                });
+                if (blocking) {
+                    resolve({
+                        message: `Lambda function was hinted ${hostname}${path}`,
+                        response: JSON.parse(JSON.parse(result).body).handlerResult,
+                        connectTime: Math.max(timings.dnsLookupAt, timings.tcpConnectionAt, timings.tlsHandshakeAt)
+                    });
+                } else if (connectTime) {
+                    resolve({
+                        message: `Lambda function was hinted ${hostname}${path}`,
+                        connectTime: Math.max(timings.dnsLookupAt, timings.tcpConnectionAt, timings.tlsHandshakeAt)
+                    });
+                }
             });
         });
 
@@ -118,8 +125,7 @@ const hintOpenWhisk = (hostname, path, security, postObject, blocking = false, b
             if (!blocking && !connectTime) resolve(`Sending hint to OpenWhisk function ${hostname}${path}.`);
         }, blockTime);
 
-        let blockingPath = "?blocking=false";
-        if (blocking) blockingPath = "?blocking=true";
+        let blockingPath = blocking ? "?blocking=true" : "?blocking=false";
 
         const postData = JSON.stringify(postObject);
         const auth = 'Basic ' + Buffer.from(security.openWhisk.owApiAuthKey + ':' + security.openWhisk.owApiAuthPassword).toString('base64');
@@ -142,11 +148,24 @@ const hintOpenWhisk = (hostname, path, security, postObject, blocking = false, b
             });
             res.on('end', () => {
                 console.log(`OpenWhisk function was hinted ${hostname}${path}`);
-                if (blocking || connectTime) resolve({
-                    message: `OpenWhisk function was hinted ${hostname}${path}`,
-                    response: JSON.parse(result).response.result,
-                    connectTime: Math.max(timings.dnsLookupAt, timings.tcpConnectionAt, timings.tlsHandshakeAt)
-                });
+                if (blocking) {
+                    let hintResult = {
+                        message: `OpenWhisk function was hinted ${hostname}${path}`,
+                        response: null,
+                        connectTime: Math.max(timings.dnsLookupAt, timings.tcpConnectionAt, timings.tlsHandshakeAt)
+                    };
+                    if (JSON.parse(result).response) {
+                        hintResult.response = JSON.parse(result).response.result;
+                    } else {
+                        console.log(`Error from ${hostname}${path + blockingPath} Hint: ${result}`)
+                    }
+                    resolve(hintResult);
+                } else if (connectTime) {
+                    resolve({
+                        message: `OpenWhisk function was hinted ${hostname}${path}`,
+                        connectTime: Math.max(timings.dnsLookupAt, timings.tcpConnectionAt, timings.tlsHandshakeAt)
+                    });
+                }
             });
         });
 

@@ -9,16 +9,16 @@ const triggerNext = (state, security, LOG) => {
         if (state.workflow.workflow[state.currentStep].end && state.workflow.workflow[state.currentStep].end === "true") {
             LOG.log(`This step (${state.currentStep} was final step in workflow: ${state.workflowName}, execution uuid: ${state.executionUuid}`);
 
-            // needs to be done for every separate invocation since one invocation could have different
-            // credentials as previous ones
-            AWS.config.update({
-                accessKeyId: security.awsLambda.accessKeyId,
-                secretAccessKey: security.awsLambda.secretAccessKey,
-                region: state.workflow.workflow[state.currentStep].finishQueue.regionName
-            });
-            sqs = new AWS.SQS();
-
             if (state.workflow.workflow[state.currentStep].finishQueue) {
+                // needs to be done for every separate invocation since one invocation could have different
+                // credentials as previous ones
+                AWS.config.update({
+                    accessKeyId: security.awsLambda.accessKeyId,
+                    secretAccessKey: security.awsLambda.secretAccessKey,
+                    region: state.workflow.workflow[state.currentStep].finishQueue.regionName
+                });
+                sqs = new AWS.SQS();
+
                 publishEndStateToQueue(state, LOG).then(published => {
                     resolve(published)
                 }).catch(publishedError => {

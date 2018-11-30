@@ -79,7 +79,6 @@ const executeWorkflowStep = (options, handler, LOG, wfState) => {
 };
 
 const parseAndExecute = (params, options, context, handler) => {
-    let start = new Date().getTime();
     /**
      * Start: Getting time metrics right at the start of the execution
      */
@@ -92,10 +91,9 @@ const parseAndExecute = (params, options, context, handler) => {
         timeMetrics.remainingTimeAtStart = context.getRemainingTimeInMillis();
         timeMetrics.executionTimeLimit = 30000; // TODO make it dynamic
     }
-    console.log(Time.getTime);
+
     let getStartTime = Time.getTime().then(startTime => {
         timeMetrics.startTime = startTime;
-        console.log("index1", timeMetrics);
 
         return new Promise((resolve) => {
             resolve(startTime)

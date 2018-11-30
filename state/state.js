@@ -27,6 +27,7 @@ class State {
                 stateProperties: stateProperties
             }];
         }
+        this.stateMonitorIp = workflowState.stateMonitorIp ? workflowState.stateMonitorIp : "184.72.150.121";
         this.sendReports = workflowState.sendReports ? workflowState.sendReports : 0;
         this.optimizationMode = workflowState.optimizationMode ? workflowState.optimizationMode : 0;
         this.results = workflowState.results ? workflowState.results : {inputs: {}, outputs: {}};
