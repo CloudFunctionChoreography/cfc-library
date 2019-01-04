@@ -89,7 +89,7 @@ const parseAndExecute = (params, options, context, handler) => {
     Time.resetEndTime();
     if (typeof context.getRemainingTimeInMillis === "function") { // context is from AWS Lambda
         timeMetrics.remainingTimeAtStart = context.getRemainingTimeInMillis();
-        timeMetrics.executionTimeLimit = 30000; // TODO make it dynamic
+        timeMetrics.executionTimeLimit = 5000; // TODO make it dynamic
     }
 
     let getStartTime = Time.getTime().then(startTime => {

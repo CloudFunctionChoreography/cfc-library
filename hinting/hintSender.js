@@ -127,15 +127,12 @@ const sendHintsHeuristic = (wfState, functionInstanceUuid, functionExecutionId, 
                 }
             };
 
-            const blockTime = 0;
-            // the first function in the workflow is waiting for the hint to return. The subsequent functions are not waiting
-
             if (wfState.currentStep === wfState.workflow.startAt && stepName !== wfState.workflow.startAt) {
                 if (steps[stepName].provider === "openWhisk") {
-                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, blocking, blockTime));
+                    promises.push(util.hintOpenWhisk(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, blocking, 0));
                     blocking = false;
                 } else if (steps[stepName].provider === "aws") {
-                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, blocking, blockTime));
+                    promises.push(util.hintLambda(steps[stepName].functionEndpoint.hostname, steps[stepName].functionEndpoint.path, security, postObject, blocking, 0));
                     blocking = false;
                 }
             }
